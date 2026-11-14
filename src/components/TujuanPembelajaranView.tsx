@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Target, Plus, Trash2, CheckCircle2, UserCheck } from 'lucide-react';
+import { Target, Plus, Trash2, CheckCircle2, Sparkles, BookOpen, Layers } from 'lucide-react';
+import { GenerateTPModal } from './GenerateTPModal';
 
 export const TujuanPembelajaranView: React.FC = () => {
   const {
     rombel,
     mapel,
     guru,
+    jurusan,
     pembelajaran,
     tujuanPembelajaran,
     activeRole,
@@ -43,6 +45,7 @@ export const TujuanPembelajaranView: React.FC = () => {
     : availableMapel[0]?.id || mapel[0]?.id;
 
   const currentMapel = mapel.find(m => m.id === activeMapelId) || mapel[0];
+  const currentJurusan = currentRombel?.jurusanId ? jurusan.find(j => j.id === currentRombel.jurusanId) : undefined;
 
   const currentTpList = tujuanPembelajaran.filter(
     t => t.rombelId === currentRombel?.id && t.mapelId === currentMapel?.id
@@ -51,6 +54,7 @@ export const TujuanPembelajaranView: React.FC = () => {
   const [kodeTp, setKodeTp] = useState(`TP ${currentTpList.length + 1}`);
   const [deskripsi, setDeskripsi] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,6 +115,32 @@ export const TujuanPembelajaranView: React.FC = () => {
         </div>
       </div>
 
+      {/* AI Smart TP Generator Promo Banner */}
+      <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-2xl p-4 sm:p-5 text-white shadow-md shadow-blue-500/15 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="space-y-1 max-w-xl">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-amber-300" />
+            <span className="text-xs font-extrabold uppercase tracking-wider text-blue-100">
+              Smart Capaian Pembelajaran Engine
+            </span>
+          </div>
+          <h4 className="font-extrabold text-sm sm:text-base tracking-tight">
+            Generate Otomatis TP Berdasarkan Mapel, Jurusan & Semester
+          </h4>
+          <p className="text-xs text-blue-100 leading-relaxed">
+            Tidak perlu mengetik kalimat kompetensi dari nol. Sistem otomatis mengidentifikasi Capaian Pembelajaran (CP) resmi BSKAP untuk <strong>{currentMapel?.nama}</strong> pada <strong>{schoolProfile.semesterAktif}</strong>.
+          </p>
+        </div>
+
+        <button
+          onClick={() => setIsGenerateModalOpen(true)}
+          className="flex items-center gap-2 px-5 py-2.5 bg-white text-blue-700 hover:bg-blue-50 font-extrabold rounded-xl text-xs shadow-md transition active:scale-95 whitespace-nowrap self-stretch sm:self-auto justify-center"
+        >
+          <Sparkles className="w-4 h-4 text-blue-600" />
+          <span>⚡ Generate TP Otomatis</span>
+        </button>
+      </div>
+
       {successMsg && (
         <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold px-4 py-2.5 rounded-xl flex items-center gap-2 animate-fadeIn">
           <CheckCircle2 className="w-4 h-4 text-emerald-600" />
@@ -118,10 +148,10 @@ export const TujuanPembelajaranView: React.FC = () => {
         </div>
       )}
 
-      {/* Form Tambah TP */}
+      {/* Form Tambah TP Manual */}
       <form onSubmit={handleAdd} className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-3">
         <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-          Tambah Tujuan Pembelajaran Baru
+          Tambah TP Manual / Khusus
         </h4>
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
           <div>
@@ -153,7 +183,7 @@ export const TujuanPembelajaranView: React.FC = () => {
                 className="flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-sm whitespace-nowrap"
               >
                 <Plus className="w-4 h-4" />
-                Tambah TP
+                Tambah Manual
               </button>
             </div>
           </div>
@@ -164,20 +194,31 @@ export const TujuanPembelajaranView: React.FC = () => {
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="p-4 border-b border-slate-100 flex items-center justify-between">
           <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-            Daftar TP Kelas {currentRombel?.nama} - {currentMapel?.nama} ({currentTpList.length} TP)
+            Daftar TP Kelas {currentRombel?.nama} - {currentMapel?.nama} ({currentTpList.length} TP Terdaftar)
           </h4>
+          <span className="text-[11px] text-blue-600 font-semibold">
+            Semester Aktif: {schoolProfile.semesterAktif}
+          </span>
         </div>
 
         {currentTpList.length === 0 ? (
-          <div className="p-8 text-center text-slate-400 text-xs">
-            Belum ada Tujuan Pembelajaran yang ditambahkan pada mapel ini.
+          <div className="p-10 text-center text-slate-400 text-xs space-y-3">
+            <Target className="w-8 h-8 text-slate-300 mx-auto" />
+            <p>Belum ada Tujuan Pembelajaran yang ditambahkan pada mata pelajaran ini.</p>
+            <button
+              onClick={() => setIsGenerateModalOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 font-bold rounded-xl text-xs hover:bg-blue-100 transition"
+            >
+              <Sparkles className="w-4 h-4" />
+              Gunakan Smart Generator TP Sekarang
+            </button>
           </div>
         ) : (
           <div className="divide-y divide-slate-100">
             {currentTpList.map((tp) => (
               <div key={tp.id} className="p-4 flex items-center justify-between gap-4 hover:bg-slate-50 transition">
                 <div className="flex items-center gap-3">
-                  <span className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-extrabold text-xs">
+                  <span className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-extrabold text-xs shrink-0">
                     {tp.kodeTp}
                   </span>
                   <div>
@@ -188,7 +229,7 @@ export const TujuanPembelajaranView: React.FC = () => {
 
                 <button
                   onClick={() => deleteTujuanPembelajaran(tp.id)}
-                  className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition"
+                  className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition shrink-0"
                   title="Hapus TP"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -198,6 +239,17 @@ export const TujuanPembelajaranView: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Modal Smart Generator TP */}
+      {currentMapel && currentRombel && (
+        <GenerateTPModal
+          isOpen={isGenerateModalOpen}
+          onClose={() => setIsGenerateModalOpen(false)}
+          currentMapel={currentMapel}
+          currentRombel={currentRombel}
+          currentJurusan={currentJurusan}
+        />
+      )}
     </div>
   );
 };
