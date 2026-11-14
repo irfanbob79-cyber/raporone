@@ -24,6 +24,7 @@ export interface SchoolProfile {
   hariEfektifSemester: number;
   tahunAjaranAktif: string;
   semesterAktif: '1 (Ganjil)' | '2 (Genap)';
+  domainUrl?: string;
 }
 
 export interface Jurusan {

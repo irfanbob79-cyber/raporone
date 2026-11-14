@@ -15,6 +15,7 @@ export const defaultSchoolProfile: SchoolProfile = {
   hariEfektifSemester: 110,
   tahunAjaranAktif: '2024/2025',
   semesterAktif: '1 (Ganjil)',
+  domainUrl: 'https://raporone.hsgserver.my.id',
 };
 
 export const defaultJurusan: Jurusan[] = [
