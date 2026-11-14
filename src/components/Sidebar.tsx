@@ -38,29 +38,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const isWali = activeRole === 'wali_kelas';
   const isAdmin = activeRole === 'admin';
+  const isKepsek = activeRole === 'kepala_sekolah';
+  const isWakur = activeRole === 'waka_kurikulum';
+  const canViewAll = isAdmin || isKepsek || isWakur;
   const isPembina = currentUser?.isPembinaEkskul;
   const isWaliXII = isWali && (currentUser?.namaRombelWali?.includes('XII') || false);
 
+  const allRoles = ['admin', 'kepala_sekolah', 'waka_kurikulum', 'guru', 'wali_kelas'];
+  const fullAccessRoles = ['admin', 'kepala_sekolah', 'waka_kurikulum'];
+  const waliAndManagementRoles = ['admin', 'kepala_sekolah', 'waka_kurikulum', 'wali_kelas'];
+
   const allNavItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'guru', 'wali_kelas'] },
-    { id: 'master', label: 'Data Master (CRUD)', icon: Users, roles: ['admin'], badge: 'Admin' },
-    { id: 'tp', label: 'Tujuan Pembelajaran', icon: Target, roles: ['admin', 'guru', 'wali_kelas'] },
-    { id: 'nilai', label: 'Input Nilai & Deskripsi', icon: Edit3, highlight: true, roles: ['admin', 'guru', 'wali_kelas'] },
-    { id: 'kehadiran', label: 'Absensi / Kehadiran', icon: CalendarCheck, roles: ['admin', 'wali_kelas'], badge: isWali ? 'Wali Kelas' : undefined },
-    { id: 'ekskul', label: 'Ekstrakurikuler', icon: Compass, roles: isAdmin || isPembina ? ['admin', 'guru', 'wali_kelas'] : ['admin'], badge: isPembina ? 'Pembina' : undefined },
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: allRoles },
+    { id: 'master', label: 'Data Master (CRUD)', icon: Users, roles: fullAccessRoles, badge: isAdmin ? 'Admin' : 'Supervisi' },
+    { id: 'tp', label: 'Tujuan Pembelajaran', icon: Target, roles: allRoles },
+    { id: 'nilai', label: 'Input Nilai & Deskripsi', icon: Edit3, highlight: true, roles: allRoles },
+    { id: 'kehadiran', label: 'Absensi / Kehadiran', icon: CalendarCheck, roles: waliAndManagementRoles, badge: isWali ? 'Wali Kelas' : undefined },
+    { id: 'ekskul', label: 'Ekstrakurikuler', icon: Compass, roles: canViewAll || isPembina ? allRoles : fullAccessRoles, badge: isPembina ? 'Pembina' : undefined },
     ...(isSMK ? [
-      { id: 'pkl', label: 'Nilai PKL (Kls XII)', icon: Briefcase, badge: 'SMK', roles: isAdmin || isWaliXII ? ['admin', 'wali_kelas'] : ['admin'] },
-      { id: 'ukk', label: 'Uji Kompetensi (UKK)', icon: Award, badge: 'SMK', roles: isAdmin || isWaliXII ? ['admin', 'wali_kelas'] : ['admin'] }
+      { id: 'pkl', label: 'Nilai PKL (Kls XII)', icon: Briefcase, badge: 'SMK', roles: canViewAll || isWaliXII ? waliAndManagementRoles : fullAccessRoles },
+      { id: 'ukk', label: 'Uji Kompetensi (UKK)', icon: Award, badge: 'SMK', roles: canViewAll || isWaliXII ? waliAndManagementRoles : fullAccessRoles }
     ] : []),
     {
       id: 'rapor',
       label: 'Cetak Rapor',
       icon: FileText,
-      roles: ['admin', 'wali_kelas'],
-      badge: isWali ? 'Wali Kelas' : 'Admin'
+      roles: waliAndManagementRoles,
+      badge: isWali ? 'Wali Kelas' : undefined
     },
-    { id: 'legger', label: 'Leger Nilai', icon: Table, roles: ['admin', 'wali_kelas'] },
-    { id: 'panduan', label: 'Panduan Guru', icon: BookOpenCheck, badge: 'Bantuan', roles: ['admin', 'guru', 'wali_kelas'] },
+    { id: 'legger', label: 'Leger Nilai', icon: Table, roles: waliAndManagementRoles },
+    { id: 'panduan', label: 'Panduan Guru', icon: BookOpenCheck, badge: 'Bantuan', roles: allRoles },
   ];
 
   const navItems = allNavItems.filter(item => item.roles.includes(activeRole));
@@ -159,9 +166,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-blue-100 text-blue-800 border border-blue-200">
                     {activeRole === 'admin' 
                       ? 'Administrator' 
+                      : activeRole === 'kepala_sekolah'
+                      ? 'Kepala Sekolah'
+                      : activeRole === 'waka_kurikulum'
+                      ? 'Waka Kurikulum'
                       : activeRole === 'wali_kelas' 
                       ? (currentUser.namaRombelWali || 'Wali Kelas') 
-                      : 'Guru'}
+                      : 'Guru Mapel'}
                   </span>
                   {currentUser.isPembinaEkskul && (
                     <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-200">

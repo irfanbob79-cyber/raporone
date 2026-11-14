@@ -41,12 +41,13 @@ export interface UserSession {
   id: string; // 'admin' atau guru.id
   username: string;
   nama: string;
-  role: 'admin' | 'guru' | 'wali_kelas';
+  role: 'admin' | 'guru' | 'wali_kelas' | 'kepala_sekolah' | 'waka_kurikulum';
   guruId?: string;
   nip?: string;
   rombelWaliId?: string; // ID kelas yang diwali jika wali kelas
   namaRombelWali?: string;
   isPembinaEkskul?: boolean;
+  ekskulId?: string;
   namaEkskul?: string;
 }
 
@@ -154,7 +155,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [guru, setGuru] = useState<Guru[]>(() => {
     const saved = localStorage.getItem(`${STORAGE_KEY}_guru`);
-    return saved ? JSON.parse(saved) : defaultGuru;
+    if (saved) {
+      try {
+        const parsed: Guru[] = JSON.parse(saved);
+        const missing = defaultGuru.filter(d => !parsed.some(p => p.id === d.id));
+        if (missing.length > 0) return [...parsed, ...missing];
+        return parsed;
+      } catch (e) {
+        return defaultGuru;
+      }
+    }
+    return defaultGuru;
   });
 
   const [rombel, setRombel] = useState<Rombel[]>(() => {
@@ -214,7 +225,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [userAccounts, setUserAccounts] = useState<UserAccount[]>(() => {
     const saved = localStorage.getItem(`${STORAGE_KEY}_user_accounts`);
-    return saved ? JSON.parse(saved) : defaultUserAccounts;
+    if (saved) {
+      try {
+        const parsed: UserAccount[] = JSON.parse(saved);
+        const missing = defaultUserAccounts.filter(d => !parsed.some(p => p.id === d.id || p.username === d.username));
+        if (missing.length > 0) return [...parsed, ...missing];
+        return parsed;
+      } catch (e) {
+        return defaultUserAccounts;
+      }
+    }
+    return defaultUserAccounts;
   });
 
   const [currentUser, setCurrentUser] = useState<UserSession | null>(() => {
@@ -275,6 +296,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         rombelWaliId: foundAcc.role === 'wali_kelas' ? (foundAcc.rombelWaliId || waliRombel?.id) : undefined,
         namaRombelWali: foundAcc.role === 'wali_kelas' ? (waliRombel?.nama || 'Kelas Wali') : undefined,
         isPembinaEkskul: foundAcc.isPembinaEkskul ?? !!pembinaEks,
+        ekskulId: foundAcc.ekskulId || pembinaEks?.id,
         namaEkskul: pembinaEks?.nama
       };
 
@@ -320,6 +342,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         rombelWaliId: waliRombel?.id,
         namaRombelWali: waliRombel?.nama,
         isPembinaEkskul: !!pembinaEks,
+        ekskulId: pembinaEks?.id,
         namaEkskul: pembinaEks?.nama
       };
 
@@ -356,6 +379,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         rombelWaliId: foundAcc.role === 'wali_kelas' ? (foundAcc.rombelWaliId || waliRombel?.id) : undefined,
         namaRombelWali: foundAcc.role === 'wali_kelas' ? (waliRombel?.nama || 'Kelas Wali') : undefined,
         isPembinaEkskul: foundAcc.isPembinaEkskul ?? !!pembinaEks,
+        ekskulId: foundAcc.ekskulId || pembinaEks?.id,
         namaEkskul: pembinaEks?.nama
       };
 

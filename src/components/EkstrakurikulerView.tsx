@@ -31,13 +31,24 @@ export const EkstrakurikulerView: React.FC = () => {
     schoolProfile
   } = useApp();
 
+  const isAdmin = activeRole === 'admin';
+  const isKepsek = activeRole === 'kepala_sekolah';
+  const isWakur = activeRole === 'waka_kurikulum';
+  const canViewAll = isAdmin || isKepsek || isWakur;
+  const isTeacherRestricted = !canViewAll;
+
+  // Filter ekskul: jika guru biasa/wali kelas, HANYA tampilkan ekskul binaan guru ini!
+  const availableEkskul = isTeacherRestricted
+    ? ekskul.filter(e => e.pembinaGuruId === currentUser?.guruId || (currentUser?.ekskulId && e.id === currentUser.ekskulId))
+    : ekskul;
+
   const [activeSubTab, setActiveSubTab] = useState<'anggota' | 'master'>('anggota');
   const [selectedEkskulId, setSelectedEkskulId] = useState<string>(() => {
     if (currentUser?.guruId) {
-      const myEks = ekskul.find(e => e.pembinaGuruId === currentUser.guruId);
+      const myEks = ekskul.find(e => e.pembinaGuruId === currentUser.guruId || e.id === currentUser.ekskulId);
       if (myEks) return myEks.id;
     }
-    return ekskul[0]?.id || '';
+    return availableEkskul[0]?.id || ekskul[0]?.id || '';
   });
   const [saveStatus, setSaveStatus] = useState('');
 
@@ -58,7 +69,7 @@ export const EkstrakurikulerView: React.FC = () => {
   const [keteranganBaru, setKeteranganBaru] = useState('');
   const [searchEnroll, setSearchEnroll] = useState('');
 
-  const currentEkskul = ekskul.find(e => e.id === selectedEkskulId) || ekskul[0];
+  const currentEkskul = availableEkskul.find(e => e.id === selectedEkskulId) || availableEkskul[0];
   const currentAnggota = anggotaEkskul.filter(a => a.ekskulId === currentEkskul?.id);
   const pembina = guru.find(g => g.id === currentEkskul?.pembinaGuruId);
 
@@ -180,7 +191,7 @@ export const EkstrakurikulerView: React.FC = () => {
               <span>Input Nilai Anggota</span>
             </button>
 
-            {activeRole === 'admin' && (
+            {canViewAll && (
               <button
                 onClick={() => setActiveSubTab('master')}
                 className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition ${
@@ -207,39 +218,53 @@ export const EkstrakurikulerView: React.FC = () => {
       {/* SUBTAB 1: ANGGOTA & PENILAIAN EKSKUL */}
       {activeSubTab === 'anggota' && (
         <div className="space-y-4">
-          {/* Ekskul Selector Bar */}
-          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                Pilih Ekstrakurikuler:
-              </label>
-              <select
-                value={selectedEkskulId}
-                onChange={(e) => setSelectedEkskulId(e.target.value)}
-                className="bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              >
-                {ekskul.map(e => (
-                  <option key={e.id} value={e.id}>
-                    {e.nama} ({e.kategori})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-              <div className="text-xs text-slate-500">
-                Pembina: <strong>{pembina ? pembina.nama : '-'}</strong>
+          {availableEkskul.length === 0 ? (
+            <div className="bg-white rounded-2xl p-8 border border-slate-200 text-center space-y-3">
+              <div className="w-12 h-12 bg-amber-100 text-amber-700 rounded-2xl flex items-center justify-center mx-auto">
+                <Compass className="w-6 h-6" />
               </div>
-
-              <button
-                onClick={() => setIsEnrollModalOpen(true)}
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition active:scale-95"
-              >
-                <UserPlus className="w-4 h-4" />
-                <span>+ Daftarkan Siswa</span>
-              </button>
+              <h4 className="font-bold text-slate-800 text-base">
+                Tidak Ada Penugasan Pembina Ekstrakurikuler
+              </h4>
+              <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+                Akun Bapak/Ibu tidak tercatat sebagai pembina kegiatan ekstrakurikuler di semester ini. Penilaian anggota hanya dapat diakses oleh Guru Pembina yang bersangkutan atau Manajemen Sekolah (Admin, Kepala Sekolah, Waka Kurikulum).
+              </p>
             </div>
-          </div>
+          ) : (
+            <>
+              {/* Ekskul Selector Bar */}
+              <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                    Pilih Ekstrakurikuler:
+                  </label>
+                  <select
+                    value={currentEkskul?.id || selectedEkskulId}
+                    onChange={(e) => setSelectedEkskulId(e.target.value)}
+                    className="bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  >
+                    {availableEkskul.map(e => (
+                      <option key={e.id} value={e.id}>
+                        {e.nama} ({e.kategori})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                  <div className="text-xs text-slate-500">
+                    Pembina: <strong>{pembina ? pembina.nama : '-'}</strong>
+                  </div>
+
+                  <button
+                    onClick={() => setIsEnrollModalOpen(true)}
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition active:scale-95"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    <span>+ Daftarkan Siswa</span>
+                  </button>
+                </div>
+              </div>
 
           {/* Tabel Anggota & Nilai Ekskul */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -339,8 +364,10 @@ export const EkstrakurikulerView: React.FC = () => {
               </div>
             )}
           </div>
-        </div>
+        </>
       )}
+    </div>
+  )}
 
       {/* SUBTAB 2: DATA MASTER EKSTRAKURIKULER */}
       {activeSubTab === 'master' && (

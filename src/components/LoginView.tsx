@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp, UserSession } from '../context/AppContext';
-import { Shield, UserCheck, Lock, User, ArrowRight, CheckCircle2, Sparkles, School } from 'lucide-react';
+import { Shield, UserCheck, Lock, User, ArrowRight, CheckCircle2, Sparkles, School, GraduationCap, BookOpen } from 'lucide-react';
 
 export const LoginView: React.FC = () => {
   const { login, loginAsDemo, guru, rombel, ekskul, schoolProfile, userAccounts } = useApp();
@@ -8,10 +8,17 @@ export const LoginView: React.FC = () => {
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
-  const getRoleLabel = (guruId: string, defaultLabel: string) => {
-    const acc = userAccounts?.find(u => u.guruId === guruId || (guruId === 'admin' && u.role === 'admin'));
+  const getRoleLabel = (idOrGuruId: string, defaultLabel: string) => {
+    const acc = userAccounts?.find(u => 
+      u.id === idOrGuruId || 
+      u.guruId === idOrGuruId || 
+      u.username === idOrGuruId || 
+      (idOrGuruId === 'admin' && u.role === 'admin')
+    );
     if (!acc) return defaultLabel;
     if (acc.role === 'admin') return 'Role: Administrator (Akses Penuh)';
+    if (acc.role === 'kepala_sekolah') return 'Role: Kepala Sekolah (Supervisi Penuh)';
+    if (acc.role === 'waka_kurikulum') return 'Role: Waka Kurikulum (Supervisi Akademik)';
     if (acc.role === 'wali_kelas') {
       const r = acc.rombelWaliId ? rombel.find(item => item.id === acc.rombelWaliId) : undefined;
       return `Role: Wali Kelas (${r?.nama || 'Rombel'})`;
@@ -126,32 +133,74 @@ export const LoginView: React.FC = () => {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[440px] overflow-y-auto pr-1">
               {/* 1. ADMIN */}
               <button
                 onClick={() => loginAsDemo('admin')}
-                className="bg-slate-800/90 hover:bg-slate-700/80 border border-slate-700 hover:border-blue-500/50 p-3.5 rounded-2xl text-left transition-all group flex flex-col justify-between space-y-2 cursor-pointer shadow-sm hover:shadow-blue-500/10"
+                className="bg-slate-800/90 hover:bg-slate-700/80 border border-slate-700 hover:border-purple-500/50 p-3 rounded-2xl text-left transition-all group flex flex-col justify-between space-y-2 cursor-pointer shadow-sm hover:shadow-purple-500/10"
               >
                 <div className="flex items-center justify-between w-full">
-                  <span className="px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10px] font-bold">
+                  <span className="px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-400 border border-purple-500/20 text-[10px] font-bold">
                     {getRoleLabel('admin', 'Role: Administrator')}
                   </span>
-                  <Shield className="w-4 h-4 text-rose-400 group-hover:scale-110 transition" />
+                  <Shield className="w-4 h-4 text-purple-400 group-hover:scale-110 transition" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-white text-xs group-hover:text-blue-400 transition">
+                  <h4 className="font-bold text-white text-xs group-hover:text-purple-400 transition">
                     Administrator Sekolah
                   </h4>
                   <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
-                    Akses penuh: CRUD Data Master, Jurusan, Manajemen Akun & Role, Semua Nilai, & Pengaturan Sekolah.
+                    Akses penuh: Kelola akun & role, data master, semua nilai rombel, dan cetak rapor se-sekolah.
                   </p>
                 </div>
               </button>
 
-              {/* 2. BAMBANG IRAWAN (Wali Kelas XII TSM & Pembina Otomotif) */}
+              {/* 2. KEPALA SEKOLAH */}
+              <button
+                onClick={() => loginAsDemo('user-kepsek')}
+                className="bg-slate-800/90 hover:bg-slate-700/80 border border-slate-700 hover:border-rose-500/50 p-3 rounded-2xl text-left transition-all group flex flex-col justify-between space-y-2 cursor-pointer shadow-sm hover:shadow-rose-500/10"
+              >
+                <div className="flex items-center justify-between w-full">
+                  <span className="px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10px] font-bold">
+                    {getRoleLabel('user-kepsek', 'Role: Kepala Sekolah')}
+                  </span>
+                  <GraduationCap className="w-4 h-4 text-rose-400 group-hover:scale-110 transition" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-white text-xs group-hover:text-rose-400 transition">
+                    Drs. H. Suwito, M.M.
+                  </h4>
+                  <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+                    Kepala Sekolah • Monitoring menyeluruh semua kelas, absensi, ekskul, PKL, UKK, & cetak rapor.
+                  </p>
+                </div>
+              </button>
+
+              {/* 3. WAKA KURIKULUM */}
+              <button
+                onClick={() => loginAsDemo('user-wakur')}
+                className="bg-slate-800/90 hover:bg-slate-700/80 border border-slate-700 hover:border-indigo-500/50 p-3 rounded-2xl text-left transition-all group flex flex-col justify-between space-y-2 cursor-pointer shadow-sm hover:shadow-indigo-500/10"
+              >
+                <div className="flex items-center justify-between w-full">
+                  <span className="px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] font-bold">
+                    {getRoleLabel('user-wakur', 'Role: Waka Kurikulum')}
+                  </span>
+                  <BookOpen className="w-4 h-4 text-indigo-400 group-hover:scale-110 transition" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-white text-xs group-hover:text-indigo-400 transition">
+                    Endang Wahyuni, S.Pd., M.Pd.
+                  </h4>
+                  <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+                    Waka Kurikulum • Supervisi akademik, ketercapaian TP, progres guru se-sekolah, & legger nilai.
+                  </p>
+                </div>
+              </button>
+
+              {/* 4. BAMBANG IRAWAN (Wali Kelas XII TSM & Pembina Otomotif) */}
               <button
                 onClick={() => loginAsDemo('guru-1')}
-                className="bg-slate-800/90 hover:bg-slate-700/80 border border-slate-700 hover:border-blue-500/50 p-3.5 rounded-2xl text-left transition-all group flex flex-col justify-between space-y-2 cursor-pointer shadow-sm hover:shadow-blue-500/10"
+                className="bg-slate-800/90 hover:bg-slate-700/80 border border-slate-700 hover:border-amber-500/50 p-3 rounded-2xl text-left transition-all group flex flex-col justify-between space-y-2 cursor-pointer shadow-sm hover:shadow-amber-500/10"
               >
                 <div className="flex items-center justify-between w-full">
                   <span className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-bold">
@@ -160,76 +209,55 @@ export const LoginView: React.FC = () => {
                   <UserCheck className="w-4 h-4 text-amber-400 group-hover:scale-110 transition" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-white text-xs group-hover:text-blue-400 transition">
+                  <h4 className="font-bold text-white text-xs group-hover:text-amber-400 transition">
                     Bambang Irawan, S.T., M.Pd.
                   </h4>
                   <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
-                    Guru Kejuruan Otomotif • Wali Kelas XII TSM (Cetak Rapor & PKL) • Pembina Klub Otomotif.
+                    Guru Otomotif • Wali Kelas XII TSM (Cetak Rapor & PKL) • Pembina Klub Otomotif.
                   </p>
                 </div>
               </button>
 
-              {/* 3. SITI RAHMAWATI (Wali Kelas XI DKV & Pembina DKV) */}
+              {/* 5. SITI RAHMAWATI (Wali Kelas XI DKV & Pembina DKV) */}
               <button
                 onClick={() => loginAsDemo('guru-2')}
-                className="bg-slate-800/90 hover:bg-slate-700/80 border border-slate-700 hover:border-blue-500/50 p-3.5 rounded-2xl text-left transition-all group flex flex-col justify-between space-y-2 cursor-pointer shadow-sm hover:shadow-blue-500/10"
+                className="bg-slate-800/90 hover:bg-slate-700/80 border border-slate-700 hover:border-blue-500/50 p-3 rounded-2xl text-left transition-all group flex flex-col justify-between space-y-2 cursor-pointer shadow-sm hover:shadow-blue-500/10"
               >
                 <div className="flex items-center justify-between w-full">
-                  <span className="px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] font-bold">
+                  <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px] font-bold">
                     {getRoleLabel('guru-2', 'Wali Kelas XI & Pembina')}
                   </span>
-                  <UserCheck className="w-4 h-4 text-indigo-400 group-hover:scale-110 transition" />
+                  <UserCheck className="w-4 h-4 text-blue-400 group-hover:scale-110 transition" />
                 </div>
                 <div>
                   <h4 className="font-bold text-white text-xs group-hover:text-blue-400 transition">
                     Siti Rahmawati, S.Kom., M.T.
                   </h4>
                   <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
-                    Guru DKV & AI • Wali Kelas XI DKV (Cetak Rapor) • Pembina Desain Kreatif.
+                    Guru DKV • Wali Kelas XI DKV (Cetak Rapor) • Pembina Desain Kreatif.
                   </p>
                 </div>
               </button>
 
-              {/* 4. DEWI LESTARI (Wali Kelas XI PBS & Pembina PMR) */}
+              {/* 6. AGUS SETIAWAN (Guru Mapel Murni - Terbatas Mapel Ampuan) */}
               <button
-                onClick={() => loginAsDemo('guru-3')}
-                className="bg-slate-800/90 hover:bg-slate-700/80 border border-slate-700 hover:border-blue-500/50 p-3.5 rounded-2xl text-left transition-all group flex flex-col justify-between space-y-2 cursor-pointer shadow-sm hover:shadow-blue-500/10"
+                onClick={() => loginAsDemo('guru-4')}
+                className="bg-slate-800/90 hover:bg-slate-700/80 border border-slate-700 hover:border-emerald-500/50 p-3 rounded-2xl text-left transition-all group flex flex-col justify-between space-y-2 cursor-pointer shadow-sm hover:shadow-emerald-500/10"
               >
                 <div className="flex items-center justify-between w-full">
                   <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">
-                    {getRoleLabel('guru-3', 'Wali Kelas XI & Pembina')}
+                    {getRoleLabel('guru-4', 'Role: Guru Mapel (Hanya Input Mapel)')}
                   </span>
                   <UserCheck className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-white text-xs group-hover:text-blue-400 transition">
-                    Dewi Lestari, S.E., Ak.
+                  <h4 className="font-bold text-white text-xs group-hover:text-emerald-400 transition">
+                    Agus Setiawan, Drs., M.Hum.
                   </h4>
                   <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
-                    Guru Akuntansi/PBS • Wali Kelas XI PBS (Cetak Rapor) • Pembina PMR.
+                    Guru Bhs Indonesia • Hak akses ketat: Hanya melihat & input nilai mapel ampuan saja.
                   </p>
                 </div>
-              </button>
-
-              {/* 5. AGUS SETIAWAN (Guru Mapel Umum - Role: Guru Mapel murni) */}
-              <button
-                onClick={() => loginAsDemo('guru-4')}
-                className="col-span-1 sm:col-span-2 bg-slate-800/90 hover:bg-slate-700/80 border border-slate-700 hover:border-blue-500/50 p-3 rounded-2xl text-left transition-all group flex items-center justify-between cursor-pointer"
-              >
-                <div>
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px] font-bold">
-                      {getRoleLabel('guru-4', 'Role: Guru Mapel (Hanya Input Mapel)')}
-                    </span>
-                    <h4 className="font-bold text-white text-xs group-hover:text-blue-400 transition">
-                      Agus Setiawan, Drs., M.Hum.
-                    </h4>
-                  </div>
-                  <p className="text-[11px] text-slate-400">
-                    Guru Mata Pelajaran Bahasa Indonesia • Hak Akses: Terbatas hanya input Nilai & TP mapel yang diampu saja.
-                  </p>
-                </div>
-                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-blue-400 group-hover:translate-x-1 transition" />
               </button>
             </div>
           </div>

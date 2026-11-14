@@ -59,6 +59,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const isWali = activeRole === 'wali_kelas';
   const isAdmin = activeRole === 'admin';
+  const isKepsek = activeRole === 'kepala_sekolah';
+  const isWakur = activeRole === 'waka_kurikulum';
+  const canViewAll = isAdmin || isKepsek || isWakur;
+  const isTeacherRestricted = !canViewAll;
+  const effectiveGuruId = currentUser?.guruId;
 
   // State Tabs & Filters Progres
   const [activeProgressTab, setActiveProgressTab] = useState<'nilai' | 'ekskul' | 'absensi' | 'pkl' | 'ukk'>('nilai');
@@ -66,7 +71,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [filterStatus, setFilterStatus] = useState<string>('all');
 
   // 1. Perhitungan Progres Nilai Mapel per Guru
-  const learningProgressList = pembelajaran.map((p, idx) => {
+  // Guru Mapel / Wali Kelas: Hanya melihat mapel yang diampunya
+  // Admin / Kepala Sekolah / Waka Kurikulum: Melihat seluruh pembelajaran se-sekolah
+  const targetPembelajaran = isTeacherRestricted
+    ? pembelajaran.filter(p => p.guruId === effectiveGuruId)
+    : pembelajaran;
+
+  const learningProgressList = targetPembelajaran.map((p, idx) => {
     const targetRombel = rombel.find(r => r.id === p.rombelId);
     const targetMapel = mapel.find(m => m.id === p.mapelId);
     const targetGuru = guru.find(g => g.id === p.guruId);
@@ -103,7 +114,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const overallNilaiPercent = totalPembelajaran > 0 ? Math.round((selesaiPembelajaran / totalPembelajaran) * 100) : 100;
 
   // 2. Perhitungan Progres Ekstrakurikuler
-  const ekskulProgressList = ekskul.map(e => {
+  // Guru: Hanya melihat ekskul yang dibinanya
+  // Admin / Kepala Sekolah / Waka Kurikulum: Melihat seluruh ekskul
+  const targetEkskul = isTeacherRestricted
+    ? ekskul.filter(e => e.pembinaGuruId === effectiveGuruId || (currentUser?.ekskulId && e.id === currentUser.ekskulId))
+    : ekskul;
+
+  const ekskulProgressList = targetEkskul.map(e => {
     const angList = anggotaEkskul.filter(a => a.ekskulId === e.id);
     const ratedAnggota = angList.filter(a => !!a.predikat && !!a.keterangan).length;
     const pembina = guru.find(g => g.id === e.pembinaGuruId);
@@ -121,12 +138,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     };
   });
 
-  const totalAnggotaEks = anggotaEkskul.length;
-  const ratedAnggotaEks = anggotaEkskul.filter(a => !!a.predikat && !!a.keterangan).length;
+  const totalAnggotaEks = ekskulProgressList.reduce((acc, curr) => acc + curr.totalAnggota, 0);
+  const ratedAnggotaEks = ekskulProgressList.reduce((acc, curr) => acc + curr.ratedAnggota, 0);
   const overallEkskulPercent = totalAnggotaEks > 0 ? Math.round((ratedAnggotaEks / totalAnggotaEks) * 100) : 100;
 
   // 3. Perhitungan Progres Absensi Rombel
-  const absensiProgressList = rombel.map(r => {
+  // Wali Kelas: Melihat rombel binaannya
+  // Admin / Kepala Sekolah / Waka Kurikulum: Melihat seluruh rombel se-sekolah
+  const targetRombel = isTeacherRestricted
+    ? (isWali ? rombel.filter(r => r.id === currentUser?.rombelWaliId || r.waliKelasId === effectiveGuruId) : [])
+    : rombel;
+
+  const absensiProgressList = targetRombel.map(r => {
     const rSiswa = siswa.filter(s => s.rombelId === r.id);
     const rKehadiran = kehadiran.filter(k => k.rombelId === r.id);
     const wali = guru.find(g => g.id === r.waliKelasId);
@@ -145,12 +168,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     };
   });
 
-  const totalRombel = rombel.length;
+  const totalRombel = targetRombel.length;
   const selesaiAbsensi = absensiProgressList.filter(a => a.isCompleted).length;
   const overallAbsensiPercent = totalRombel > 0 ? Math.round((selesaiAbsensi / totalRombel) * 100) : 100;
 
   // 4. Perhitungan Progres Penilaian PKL (Praktik Kerja Lapangan - Khusus Kelas XII)
-  const rombelKelasXII = rombel.filter(r => r.tingkat === 12 || r.nama.startsWith('XII'));
+  const rombelKelasXII = isTeacherRestricted
+    ? (isWali ? rombel.filter(r => (r.tingkat === 12 || r.nama.startsWith('XII')) && (r.id === currentUser?.rombelWaliId || r.waliKelasId === effectiveGuruId)) : [])
+    : rombel.filter(r => r.tingkat === 12 || r.nama.startsWith('XII'));
+
   const pklProgressList = rombelKelasXII.map(r => {
     const rSiswa = siswa.filter(s => s.rombelId === r.id);
     const rPKL = (nilaiPKL || []).filter(p => p.rombelId === r.id && p.nilaiAkhir > 0 && !!p.mitraDudi);
@@ -235,8 +261,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </h2>
           <p className="text-xs sm:text-sm text-blue-100 font-medium leading-relaxed">
             Sistem informasi penilaian rapor terpadu untuk <strong>{schoolProfile.namaSekolah}</strong>.
-            {isWali && currentUser?.namaRombelWali ? ` Anda bertugas sebagai Wali Kelas ${currentUser.namaRombelWali}.` : ''}
-            {isAdmin ? ' Anda memiliki akses administrator penuh untuk seluruh data master, konfigurasi role akun, dan progres sekolah.' : ''}
+            {isKepsek && ' Masuk sebagai Kepala Sekolah (Supervisi Menyeluruh Seluruh Kelas & Rapor).'}
+            {isWakur && ' Masuk sebagai Waka Kurikulum (Monitoring Progres Akademik, Nilai Guru, TP, & Leger).'}
+            {isWali && currentUser?.namaRombelWali && ` Bertugas sebagai Wali Kelas ${currentUser.namaRombelWali}.`}
+            {isAdmin && ' Memiliki hak akses administrator penuh untuk seluruh data master, konfigurasi akun, dan progres sekolah.'}
+            {activeRole === 'guru' && ' Masuk sebagai Guru Mapel. Dashboard menampilkan penugasan dan progres kelas yang Anda ampu.'}
           </p>
 
           <div className="pt-2 flex flex-wrap gap-2.5">
@@ -248,17 +277,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               Mulai Input Nilai & Deskripsi
             </button>
 
-            {isWali && (
+            {(canViewAll || isWali) && (
               <button
                 onClick={() => setActiveTab('rapor')}
                 className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold rounded-xl text-xs shadow-md transition active:scale-95"
               >
                 <Printer className="w-4 h-4" />
-                Cetak Rapor Rombel
+                Cetak Rapor
               </button>
             )}
 
-            {isWali && (
+            {(canViewAll || isWali) && (
               <button
                 onClick={() => setActiveTab('kehadiran')}
                 className="flex items-center gap-2 px-4 py-2.5 bg-white/20 hover:bg-white/30 text-white font-semibold rounded-xl text-xs transition active:scale-95 border border-white/30"
@@ -268,7 +297,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </button>
             )}
 
-            {!isWali && !isAdmin && (
+            {!isWali && !canViewAll && (
               <button
                 onClick={() => setActiveTab('tp')}
                 className="flex items-center gap-2 px-4 py-2.5 bg-blue-600/60 hover:bg-blue-600 border border-white/20 text-white font-semibold rounded-xl text-xs transition active:scale-95"
@@ -444,7 +473,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                 <Edit3 className="w-3.5 h-3.5 text-blue-600" />
-                Nilai Guru Mapel
+                {isTeacherRestricted ? 'Nilai Mapel Ampuan' : 'Nilai Guru Mapel'}
               </span>
               <span className="text-xs font-extrabold text-blue-700">{overallNilaiPercent}%</span>
             </div>
@@ -472,19 +501,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                 <Award className="w-3.5 h-3.5 text-amber-600" />
-                Penilaian Ekstrakurikuler
+                {isTeacherRestricted ? 'Ekskul Binaan Anda' : 'Penilaian Ekstrakurikuler'}
               </span>
-              <span className="text-xs font-extrabold text-amber-700">{overallEkskulPercent}%</span>
+              <span className="text-xs font-extrabold text-amber-700">
+                {targetEkskul.length === 0 ? '-' : `${overallEkskulPercent}%`}
+              </span>
             </div>
             <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
               <div
                 className="bg-amber-500 h-2.5 rounded-full transition-all duration-500"
-                style={{ width: `${overallEkskulPercent}%` }}
+                style={{ width: `${targetEkskul.length === 0 ? 0 : overallEkskulPercent}%` }}
               ></div>
             </div>
             <div className="flex items-center justify-between mt-2 text-[11px] text-slate-500 font-medium">
-              <span>{ratedAnggotaEks} dari {totalAnggotaEks} Anggota Dinilai</span>
-              <span className="font-bold text-amber-600">{totalAnggotaEks - ratedAnggotaEks} Belum</span>
+              <span>
+                {targetEkskul.length === 0 ? 'Bukan Pembina Ekskul' : `${ratedAnggotaEks} dari ${totalAnggotaEks} Dinilai`}
+              </span>
+              <span className="font-bold text-amber-600">
+                {targetEkskul.length === 0 ? '-' : `${totalAnggotaEks - ratedAnggotaEks} Belum`}
+              </span>
             </div>
           </div>
 
@@ -500,19 +535,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                 <CalendarCheck className="w-3.5 h-3.5 text-emerald-600" />
-                Absensi & Catatan Rombel
+                {isTeacherRestricted ? 'Absensi Kelas Binaan' : 'Absensi & Catatan Rombel'}
               </span>
-              <span className="text-xs font-extrabold text-emerald-700">{overallAbsensiPercent}%</span>
+              <span className="text-xs font-extrabold text-emerald-700">
+                {targetRombel.length === 0 ? '-' : `${overallAbsensiPercent}%`}
+              </span>
             </div>
             <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
               <div
                 className="bg-emerald-600 h-2.5 rounded-full transition-all duration-500"
-                style={{ width: `${overallAbsensiPercent}%` }}
+                style={{ width: `${targetRombel.length === 0 ? 0 : overallAbsensiPercent}%` }}
               ></div>
             </div>
             <div className="flex items-center justify-between mt-2 text-[11px] text-slate-500 font-medium">
-              <span>{selesaiAbsensi} dari {totalRombel} Rombel Terisi</span>
-              <span className="font-bold text-emerald-600">{totalRombel - selesaiAbsensi} Belum</span>
+              <span>
+                {targetRombel.length === 0 ? 'Bukan Wali Kelas' : `${selesaiAbsensi} dari ${totalRombel} Rombel Terisi`}
+              </span>
+              <span className="font-bold text-emerald-600">
+                {targetRombel.length === 0 ? '-' : `${totalRombel - selesaiAbsensi} Belum`}
+              </span>
             </div>
           </div>
 
@@ -592,8 +633,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   onChange={(e) => setFilterRombel(e.target.value)}
                   className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 font-bold"
                 >
-                  <option value="all">Semua Rombel ({rombel.length})</option>
-                  {rombel.map(r => (
+                  <option value="all">Semua Rombel ({isTeacherRestricted ? Array.from(new Set(targetPembelajaran.map(p => p.rombelId))).length : rombel.length})</option>
+                  {(isTeacherRestricted ? rombel.filter(r => targetPembelajaran.some(p => p.rombelId === r.id)) : rombel).map(r => (
                     <option key={r.id} value={r.id}>{r.nama}</option>
                   ))}
                 </select>
@@ -706,121 +747,143 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* DETAIL TAB 2: GRID PROGRES EKSTRAKURIKULER */}
         {activeProgressTab === 'ekskul' && (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-              {ekskulProgressList.map(item => (
-                <div key={item.id} className="p-4 rounded-2xl border border-slate-200 bg-white shadow-sm space-y-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 uppercase">
-                        {item.kategori}
-                      </span>
-                      <h4 className="font-extrabold text-slate-800 text-sm mt-1">{item.nama}</h4>
-                      <p className="text-xs text-slate-500">Pembina: <strong>{item.pembinaNama}</strong></p>
+            {ekskulProgressList.length === 0 ? (
+              <div className="p-8 text-center bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+                <Compass className="w-8 h-8 text-slate-400 mx-auto" />
+                <h5 className="font-bold text-slate-700 text-sm">Tidak Ada Kegiatan Ekskul yang Dibina</h5>
+                <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  Akun Bapak/Ibu tidak tercatat sebagai pembina kegiatan ekstrakurikuler di semester aktif ini.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                {ekskulProgressList.map(item => (
+                  <div key={item.id} className="p-4 rounded-2xl border border-slate-200 bg-white shadow-sm space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 uppercase">
+                          {item.kategori}
+                        </span>
+                        <h4 className="font-extrabold text-slate-800 text-sm mt-1">{item.nama}</h4>
+                        <p className="text-xs text-slate-500">Pembina: <strong>{item.pembinaNama}</strong></p>
+                      </div>
+                      {item.status === 'selesai' ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
+                          ✓ Tuntas
+                        </span>
+                      ) : item.status === 'sebagian' ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 shrink-0">
+                          ⏳ Sebagian
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200 shrink-0">
+                          ✕ Belum
+                        </span>
+                      )}
                     </div>
-                    {item.status === 'selesai' ? (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
-                        ✓ Tuntas
-                      </span>
-                    ) : item.status === 'sebagian' ? (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 shrink-0">
-                        ⏳ Sebagian
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200 shrink-0">
-                        ✕ Belum
-                      </span>
-                    )}
-                  </div>
 
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-                      <span>{item.ratedAnggota} / {item.totalAnggota} Anggota Dinilai</span>
-                      <span>{item.percent}%</span>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                        <span>{item.ratedAnggota} / {item.totalAnggota} Anggota Dinilai</span>
+                        <span>{item.percent}%</span>
+                      </div>
+                      <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                        <div
+                          className="bg-amber-500 h-2 rounded-full"
+                          style={{ width: `${item.percent}%` }}
+                        ></div>
+                      </div>
                     </div>
-                    <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
-                      <div
-                        className="bg-amber-500 h-2 rounded-full"
-                        style={{ width: `${item.percent}%` }}
-                      ></div>
-                    </div>
-                  </div>
 
-                  <button
-                    onClick={() => setActiveTab('ekskul')}
-                    className="w-full py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold rounded-xl text-xs transition flex items-center justify-center gap-1.5"
-                  >
-                    <span>Buka Penilaian Ekskul</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
+                    <button
+                      onClick={() => setActiveTab('ekskul')}
+                      className="w-full py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold rounded-xl text-xs transition flex items-center justify-center gap-1.5"
+                    >
+                      <span>Buka Penilaian Ekskul</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
         {/* DETAIL TAB 3: TABEL PROGRES ABSENSI ROMBEL */}
         {activeProgressTab === 'absensi' && (
-          <div className="overflow-x-auto border border-slate-200 rounded-2xl overflow-hidden">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
-                <tr>
-                  <th className="p-3 w-10 text-center">No</th>
-                  <th className="p-3">Rombel / Kelas</th>
-                  <th className="p-3">Wali Kelas</th>
-                  <th className="p-3 text-center">Siswa Tercatat</th>
-                  <th className="p-3 w-36">Kelengkapan</th>
-                  <th className="p-3 text-center">Status Absensi</th>
-                  <th className="p-3 w-28 text-center">Aksi Cepat</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {absensiProgressList.map((item, idx) => (
-                  <tr key={item.id} className="hover:bg-slate-50">
-                    <td className="p-3 text-center text-slate-400">{idx + 1}</td>
-                    <td className="p-3 font-bold text-blue-700">{item.nama}</td>
-                    <td className="p-3 font-semibold text-slate-800">{item.waliNama}</td>
-                    <td className="p-3 text-center font-bold">
-                      {item.filledCount} / {item.totalSiswa} Siswa
-                    </td>
-                    <td className="p-3">
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between text-[10px] font-bold">
-                          <span>{item.percent}%</span>
-                        </div>
-                        <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
-                          <div
-                            className={`h-2 rounded-full ${item.isCompleted ? 'bg-emerald-500' : 'bg-amber-500'}`}
-                            style={{ width: `${item.percent}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-3 text-center">
-                      {item.isCompleted ? (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                          ✓ Lengkap
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                          ⏳ Belum Lengkap
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-3 text-center">
-                      <button
-                        onClick={() => {
-                          setSelectedRombelId(item.id);
-                          setActiveTab('kehadiran');
-                        }}
-                        className="px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded-lg text-[11px] transition"
-                      >
-                        Input Absensi
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div>
+            {absensiProgressList.length === 0 ? (
+              <div className="p-8 text-center bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+                <CalendarCheck className="w-8 h-8 text-slate-400 mx-auto" />
+                <h5 className="font-bold text-slate-700 text-sm">Khusus Wali Kelas & Manajemen Sekolah</h5>
+                <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  Pengisian absensi dan catatan perkembangan siswa dikelola oleh Wali Kelas masing-masing rombongan belajar atau Administrator / Kepala Sekolah / Waka Kurikulum.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto border border-slate-200 rounded-2xl overflow-hidden">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+                    <tr>
+                      <th className="p-3 w-10 text-center">No</th>
+                      <th className="p-3">Rombel / Kelas</th>
+                      <th className="p-3">Wali Kelas</th>
+                      <th className="p-3 text-center">Siswa Tercatat</th>
+                      <th className="p-3 w-36">Kelengkapan</th>
+                      <th className="p-3 text-center">Status Absensi</th>
+                      <th className="p-3 w-28 text-center">Aksi Cepat</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {absensiProgressList.map((item, idx) => (
+                      <tr key={item.id} className="hover:bg-slate-50">
+                        <td className="p-3 text-center text-slate-400">{idx + 1}</td>
+                        <td className="p-3 font-bold text-blue-700">{item.nama}</td>
+                        <td className="p-3 font-semibold text-slate-800">{item.waliNama}</td>
+                        <td className="p-3 text-center font-bold">
+                          {item.filledCount} / {item.totalSiswa} Siswa
+                        </td>
+                        <td className="p-3">
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-[10px] font-bold">
+                              <span>{item.percent}%</span>
+                            </div>
+                            <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                              <div
+                                className={`h-2 rounded-full ${item.isCompleted ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                                style={{ width: `${item.percent}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-3 text-center">
+                          {item.isCompleted ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                              ✓ Lengkap
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                              ⏳ Belum Lengkap
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 text-center">
+                          <button
+                            onClick={() => {
+                              setSelectedRombelId(item.id);
+                              setActiveTab('kehadiran');
+                            }}
+                            className="px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded-lg text-[11px] transition"
+                          >
+                            Input Absensi
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 

@@ -24,6 +24,12 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings, onOpenImport, on
     if (activeRole === 'admin') {
       return { label: 'Administrator', bg: 'bg-purple-100 text-purple-800 border-purple-200' };
     }
+    if (activeRole === 'kepala_sekolah') {
+      return { label: 'Kepala Sekolah', bg: 'bg-rose-100 text-rose-800 border-rose-200' };
+    }
+    if (activeRole === 'waka_kurikulum') {
+      return { label: 'Waka Kurikulum', bg: 'bg-indigo-100 text-indigo-800 border-indigo-200' };
+    }
     if (activeRole === 'wali_kelas') {
       return { 
         label: currentUser?.namaRombelWali ? `Wali ${currentUser.namaRombelWali}` : 'Wali Kelas', 

@@ -94,6 +94,28 @@ export const defaultGuru: Guru[] = [
     email: 'agus.setiawan@smkn1labmar.sch.id',
     noHp: '085269887766',
   },
+  {
+    id: 'guru-kepsek',
+    nip: '196705121994031004',
+    nuptk: '2134745648200012',
+    nama: 'Suwito',
+    gelarDepan: 'Drs. H.',
+    gelarBelakang: 'M.M.',
+    jenisKelamin: 'L',
+    email: 'kepala.sekolah@smkn1labmar.sch.id',
+    noHp: '081234567890',
+  },
+  {
+    id: 'guru-wakur',
+    nip: '197306141999032002',
+    nuptk: '5345751653210034',
+    nama: 'Endang Wahyuni',
+    gelarDepan: '',
+    gelarBelakang: 'S.Pd., M.Pd.',
+    jenisKelamin: 'P',
+    email: 'waka.kurikulum@smkn1labmar.sch.id',
+    noHp: '081398765432',
+  },
 ];
 
 export const defaultRombel: Rombel[] = [
@@ -4551,6 +4573,22 @@ export const defaultUserAccounts: UserAccount[] = [
     nama: 'Administrator Sistem',
     role: 'admin',
     keterangan: 'Administrator Sistem (Akses Penuh Seluruh Modul)'
+  },
+  {
+    id: 'user-kepsek',
+    username: 'kepala',
+    nama: 'Drs. H. Suwito, M.M.',
+    role: 'kepala_sekolah',
+    guruId: 'guru-kepsek',
+    keterangan: 'Kepala Sekolah (Monitoring Menyeluruh Seluruh Data & Cetak Rapor Sekolah)'
+  },
+  {
+    id: 'user-wakur',
+    username: 'wakur',
+    nama: 'Endang Wahyuni, S.Pd., M.Pd.',
+    role: 'waka_kurikulum',
+    guruId: 'guru-wakur',
+    keterangan: 'Waka Kurikulum (Monitoring Nilai, Ketercapaian TP, Absensi & Supervisi Akademik)'
   },
   {
     id: 'user-guru-1',

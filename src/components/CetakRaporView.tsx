@@ -24,9 +24,12 @@ export const CetakRaporView: React.FC = () => {
   } = useApp();
 
   const isAdmin = activeRole === 'admin';
-  const isWaliKelas = activeRole === 'wali_kelas' || isAdmin;
+  const isKepsek = activeRole === 'kepala_sekolah';
+  const isWakur = activeRole === 'waka_kurikulum';
+  const canViewAll = isAdmin || isKepsek || isWakur;
+  const isWaliKelas = activeRole === 'wali_kelas' || canViewAll;
 
-  const availableRombel = (activeRole === 'wali_kelas' && currentUser?.rombelWaliId)
+  const availableRombel = (activeRole === 'wali_kelas' && currentUser?.rombelWaliId && !canViewAll)
     ? rombel.filter(r => r.id === currentUser.rombelWaliId)
     : rombel;
 

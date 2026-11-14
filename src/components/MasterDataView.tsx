@@ -779,6 +779,14 @@ export const MasterDataView: React.FC<{ onOpenImport: () => void }> = ({ onOpenI
                             <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-purple-100 text-purple-800 border border-purple-200 whitespace-nowrap">
                               👑 Administrator
                             </span>
+                          ) : acc.role === 'kepala_sekolah' ? (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-200 whitespace-nowrap">
+                              🎓 Kepala Sekolah
+                            </span>
+                          ) : acc.role === 'waka_kurikulum' ? (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-indigo-100 text-indigo-800 border border-indigo-200 whitespace-nowrap">
+                              📋 Waka Kurikulum
+                            </span>
                           ) : acc.role === 'wali_kelas' ? (
                             <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-800 border border-blue-200 whitespace-nowrap">
                               ⭐ Wali Kelas
@@ -1431,6 +1439,40 @@ export const MasterDataView: React.FC<{ onOpenImport: () => void }> = ({ onOpenI
                       <span className="font-bold text-slate-800 block text-xs">⭐ Wali Kelas</span>
                       <span className="text-[11px] text-slate-500">
                         Bisa menginput nilai mapel ampuannya + menginput absensi rombel + mencetak dokumen Rapor Resmi untuk kelasnya.
+                      </span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-2.5 p-2 rounded-lg bg-white border border-slate-200 cursor-pointer hover:border-purple-300">
+                    <input
+                      type="radio"
+                      name="accountRole"
+                      value="waka_kurikulum"
+                      checked={accountForm.role === 'waka_kurikulum'}
+                      onChange={() => setAccountForm({ ...accountForm, role: 'waka_kurikulum', rombelWaliId: undefined })}
+                      className="mt-0.5 text-purple-600"
+                    />
+                    <div>
+                      <span className="font-bold text-slate-800 block text-xs">📋 Waka Kurikulum (Wakur)</span>
+                      <span className="text-[11px] text-slate-500">
+                        Supervisi kurikulum: melihat progres seluruh guru se-sekolah, monitoring TP, absensi, legger nilai, dan cetak rapor seluruh kelas.
+                      </span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-2.5 p-2 rounded-lg bg-white border border-slate-200 cursor-pointer hover:border-purple-300">
+                    <input
+                      type="radio"
+                      name="accountRole"
+                      value="kepala_sekolah"
+                      checked={accountForm.role === 'kepala_sekolah'}
+                      onChange={() => setAccountForm({ ...accountForm, role: 'kepala_sekolah', rombelWaliId: undefined })}
+                      className="mt-0.5 text-purple-600"
+                    />
+                    <div>
+                      <span className="font-bold text-slate-800 block text-xs">🎓 Kepala Sekolah</span>
+                      <span className="text-[11px] text-slate-500">
+                        Supervisi penuh: monitoring seluruh progres sekolah, penilaian guru, ekskul, PKL, UKK, legger nilai, dan pratinjau rapor seluruh kelas.
                       </span>
                     </div>
                   </label>

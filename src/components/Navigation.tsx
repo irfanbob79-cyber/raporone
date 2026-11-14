@@ -21,6 +21,9 @@ interface NavigationProps {
 export const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab }) => {
   const { activeRole, currentUser } = useApp();
   const isAdmin = activeRole === 'admin';
+  const isKepsek = activeRole === 'kepala_sekolah';
+  const isWakur = activeRole === 'waka_kurikulum';
+  const canViewAll = isAdmin || isKepsek || isWakur;
   const isWali = activeRole === 'wali_kelas';
 
   return (
@@ -49,7 +52,7 @@ export const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab 
         <span>Nilai</span>
       </button>
 
-      {(isAdmin || isWali) ? (
+      {(canViewAll || isWali) ? (
         <button
           onClick={() => setActiveTab('kehadiran')}
           className={`flex flex-col items-center justify-center p-1 rounded-lg text-[10px] font-medium transition ${
@@ -71,7 +74,7 @@ export const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab 
         </button>
       )}
 
-      {(isAdmin || isWali) && (
+      {(canViewAll || isWali) && (
         <button
           onClick={() => setActiveTab('rapor')}
           className={`flex flex-col items-center justify-center p-1 rounded-lg text-[10px] font-medium transition ${
