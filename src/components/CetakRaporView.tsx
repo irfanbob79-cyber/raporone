@@ -237,7 +237,8 @@ export const CetakRaporView: React.FC = () => {
                   <tr className="bg-slate-50 print:bg-slate-100 font-bold border-b border-black text-center">
                     <th className="p-2 w-10 border-r border-black">No</th>
                     <th className="p-2 min-w-[160px] text-left border-r border-black">Mata Pelajaran</th>
-                    <th className="p-2 w-16 border-r border-black">Nilai Akhir</th>
+                    <th className="p-2 w-14 border-r border-black text-center">KKTP</th>
+                    <th className="p-2 w-16 border-r border-black text-center">Nilai Akhir</th>
                     <th className="p-2 text-left">Capaian Kompetensi</th>
                   </tr>
                 </thead>
@@ -245,7 +246,7 @@ export const CetakRaporView: React.FC = () => {
                   {curriculumGroups.map((group) => (
                     <React.Fragment key={group.groupTitle}>
                       <tr className="bg-slate-100 print:bg-slate-200 font-bold border-y border-black">
-                        <td colSpan={4} className="p-1.5 px-2 text-xs uppercase tracking-wide bg-slate-100 print:bg-slate-200">
+                        <td colSpan={5} className="p-1.5 px-2 text-xs uppercase tracking-wide bg-slate-100 print:bg-slate-200">
                           {group.groupTitle}
                         </td>
                       </tr>
@@ -266,6 +267,9 @@ export const CetakRaporView: React.FC = () => {
                             <td className="p-2 text-center border-r border-black">{item.no}</td>
                             <td className="p-2 font-medium border-r border-black">
                               <div>{item.nama}</div>
+                            </td>
+                            <td className="p-2 text-center font-semibold text-slate-700 print:text-black border-r border-black">
+                              {item.kktp || 75}
                             </td>
                             <td className="p-2 text-center font-bold text-sm border-r border-black">
                               {nilai?.nilaiAkhir || '-'}

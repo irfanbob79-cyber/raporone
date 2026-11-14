@@ -88,6 +88,7 @@ export interface MataPelajaran {
   kode: string;
   nama: string;
   kelompok: KelompokMapel;
+  kktp?: number; // Kriteria Ketercapaian Tujuan Pembelajaran (KKTP / KKM)
   jenjang: SchoolLevel[];
 }
 

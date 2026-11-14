@@ -330,6 +330,19 @@ export const InputNilaiView: React.FC = () => {
               )}
             </div>
 
+            {/* KKTP Info Badge */}
+            {currentMapel && (
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                  KKTP (KKM)
+                </label>
+                <div className="bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold rounded-xl px-3 py-2 flex items-center gap-1.5 shadow-sm">
+                  <span>KKTP:</span>
+                  <span className="text-sm font-extrabold text-amber-700">{currentMapel.kktp || 75}</span>
+                </div>
+              </div>
+            )}
+
             {/* View Mode Toggle: Desktop Grid vs Smartphone Card */}
             <div className="pt-4 md:pt-0">
               <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">

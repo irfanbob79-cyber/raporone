@@ -60,10 +60,10 @@ export function getCurriculumGroupsForRombel(
   const rombelName = rombel.nama.toUpperCase();
   const rombelKode = (rombel.kode || '').toUpperCase();
 
-  // Deteksi jurusan dari kode/nama rombel
-  const isTSM = rombelName.includes('TSM') || rombelName.includes('SEPEDA MOTOR') || rombelKode.includes('TSM');
+  // Deteksi jurusan dari kode/nama rombel (Mendukung penamaan resmi SMKN 1 Labuhan Maringgai)
+  const isTSM = rombelName.includes('TSM') || rombelName.includes('SEPEDA MOTOR') || rombelName.includes('OTOMOTIF') || rombelKode.includes('TSM') || rombelKode.includes('TO');
   const isDKV = rombelName.includes('DKV') || rombelName.includes('DESAIN') || rombelKode.includes('DKV');
-  const isPBS = rombelName.includes('PBS') || rombelName.includes('PERBANKAN') || rombelName.includes('AKL') || rombelName.includes('AKUNTANSI') || rombelKode.includes('PBS') || rombelKode.includes('AKL');
+  const isPBS = rombelName.includes('PBS') || rombelName.includes('PERBANKAN') || rombelName.includes('LEMBAGA 2') || rombelKode.includes('PBS');
 
   const agamaSubjectName = getNamaMapelAgama(siswa?.agama);
 
@@ -190,33 +190,55 @@ export function getCurriculumGroupsForRombel(
     return undefined;
   };
 
+  const getSubjectKKTP = (name: string, masterId?: string): number => {
+    if (masterId) {
+      const found = masterMapel.find(m => m.id === masterId);
+      if (found?.kktp) return found.kktp;
+    }
+    const clean = name.toLowerCase().trim();
+    const found = masterMapel.find(m => m.nama.toLowerCase().trim() === clean);
+    return found?.kktp || 75; // Nilai standar KKTP (Kriteria Ketercapaian Tujuan Pembelajaran)
+  };
+
   const groups: SubjectGroup[] = [
     {
       groupTitle: 'A. KELOMPOK MATA PELAJARAN UMUM',
-      items: umumSubjectNames.map((nama, idx) => ({
-        no: idx + 1,
-        nama,
-        kode: `UMUM-${idx + 1}`,
-        matchedMapelId: findMasterId(nama),
-      })),
+      items: umumSubjectNames.map((nama, idx) => {
+        const mId = findMasterId(nama);
+        return {
+          no: idx + 1,
+          nama,
+          kode: `UMUM-${idx + 1}`,
+          kktp: getSubjectKKTP(nama, mId),
+          matchedMapelId: mId,
+        };
+      }),
     },
     {
       groupTitle: 'B. KELOMPOK MATA PELAJARAN KEJURUAN',
-      items: kejuruanSubjectNames.map((nama, idx) => ({
-        no: idx + 1,
-        nama,
-        kode: `KEJ-${idx + 1}`,
-        matchedMapelId: findMasterId(nama),
-      })),
+      items: kejuruanSubjectNames.map((nama, idx) => {
+        const mId = findMasterId(nama);
+        return {
+          no: idx + 1,
+          nama,
+          kode: `KEJ-${idx + 1}`,
+          kktp: getSubjectKKTP(nama, mId),
+          matchedMapelId: mId,
+        };
+      }),
     },
     {
       groupTitle: 'C. MATA PELAJARAN MULOK',
-      items: mulokSubjectNames.map((nama, idx) => ({
-        no: idx + 1,
-        nama,
-        kode: `MULOK-${idx + 1}`,
-        matchedMapelId: findMasterId(nama),
-      })),
+      items: mulokSubjectNames.map((nama, idx) => {
+        const mId = findMasterId(nama);
+        return {
+          no: idx + 1,
+          nama,
+          kode: `MULOK-${idx + 1}`,
+          kktp: getSubjectKKTP(nama, mId),
+          matchedMapelId: mId,
+        };
+      }),
     },
   ];
 

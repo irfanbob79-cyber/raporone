@@ -173,6 +173,7 @@ export const MasterDataView: React.FC<{ onOpenImport: () => void }> = ({ onOpenI
       kode: 'MP-01',
       nama: '',
       kelompok: 'Kelompok Umum',
+      kktp: 75,
       jenjang: ['SMK', 'SMA', 'SMP', 'SD']
     });
     setModalType('mapel');
@@ -504,6 +505,7 @@ export const MasterDataView: React.FC<{ onOpenImport: () => void }> = ({ onOpenI
                   <th className="p-3 w-10 text-center">No</th>
                   <th className="p-3">Kode</th>
                   <th className="p-3">Nama Mata Pelajaran</th>
+                  <th className="p-3 w-16 text-center">KKTP</th>
                   <th className="p-3">Kelompok Kurikulum</th>
                   <th className="p-3 w-20 text-center">Aksi</th>
                 </tr>
@@ -514,6 +516,11 @@ export const MasterDataView: React.FC<{ onOpenImport: () => void }> = ({ onOpenI
                     <td className="p-3 text-center text-slate-400">{idx + 1}</td>
                     <td className="p-3 font-mono font-bold text-blue-700">{m.kode}</td>
                     <td className="p-3 font-semibold text-slate-800">{m.nama}</td>
+                    <td className="p-3 text-center">
+                      <span className="px-2 py-0.5 rounded-lg text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                        {m.kktp || 75}
+                      </span>
+                    </td>
                     <td className="p-3">
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
                         {m.kelompok}
@@ -904,21 +911,35 @@ export const MasterDataView: React.FC<{ onOpenImport: () => void }> = ({ onOpenI
                 </div>
               </div>
 
-              <div>
-                <label className="block font-semibold mb-1">Kelompok Kurikulum</label>
-                <select
-                  value={mapelForm.kelompok || 'Kelompok Umum'}
-                  onChange={(e) => setMapelForm({ ...mapelForm, kelompok: e.target.value as any })}
-                  className="w-full p-2 border rounded-lg font-semibold"
-                >
-                  <option value="Kelompok Umum">Kelompok Umum</option>
-                  <option value="Kejuruan: Dasar Program Keahlian">Kejuruan: Dasar Program Keahlian</option>
-                  <option value="Kejuruan: Konsentrasi Keahlian">Kejuruan: Konsentrasi Keahlian</option>
-                  <option value="Projek Kreatif dan Kewirausahaan (PKK)">Projek Kreatif dan Kewirausahaan (PKK)</option>
-                  <option value="Praktik Kerja Lapangan (PKL)">Praktik Kerja Lapangan (PKL)</option>
-                  <option value="Mata Pelajaran Pilihan">Mata Pelajaran Pilihan</option>
-                  <option value="Muatan Lokal">Muatan Lokal</option>
-                </select>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="block font-semibold mb-1">KKTP (KKM)</label>
+                  <input
+                    type="number"
+                    value={mapelForm.kktp ?? 75}
+                    onChange={(e) => setMapelForm({ ...mapelForm, kktp: Number(e.target.value) })}
+                    className="w-full p-2 border rounded-lg font-bold text-center"
+                    min={0}
+                    max={100}
+                    required
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="block font-semibold mb-1">Kelompok Kurikulum</label>
+                  <select
+                    value={mapelForm.kelompok || 'Kelompok Umum'}
+                    onChange={(e) => setMapelForm({ ...mapelForm, kelompok: e.target.value as any })}
+                    className="w-full p-2 border rounded-lg font-semibold"
+                  >
+                    <option value="Kelompok Umum">Kelompok Umum</option>
+                    <option value="Kejuruan: Dasar Program Keahlian">Kejuruan: Dasar Program Keahlian</option>
+                    <option value="Kejuruan: Konsentrasi Keahlian">Kejuruan: Konsentrasi Keahlian</option>
+                    <option value="Projek Kreatif dan Kewirausahaan (PKK)">Projek Kreatif dan Kewirausahaan (PKK)</option>
+                    <option value="Praktik Kerja Lapangan (PKL)">Praktik Kerja Lapangan (PKL)</option>
+                    <option value="Mata Pelajaran Pilihan">Mata Pelajaran Pilihan</option>
+                    <option value="Muatan Lokal">Muatan Lokal</option>
+                  </select>
+                </div>
               </div>
 
               <div className="pt-3 flex justify-end gap-2">

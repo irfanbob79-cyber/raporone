@@ -161,21 +161,31 @@ export const defaultRombel: Rombel[] = [
     tahunAjaran: '2024/2025',
   },
 
-  // Kelas X
+  // Kelas X (Sesuai Struktur Resmi SMKN 1 Labuhan Maringgai)
   {
-    id: 'rombel-x-tsm-1',
-    kode: 'X TSM',
-    nama: 'X TSM',
+    id: 'rombel-x-akl-1',
+    kode: 'X-AKL-1',
+    nama: 'X Akuntansi dan Keuangan Lembaga 1',
     tingkat: 10,
     fase: 'Fase E',
-    jurusanId: 'jur-tsm',
-    waliKelasId: 'guru-4',
+    jurusanId: 'jur-akl',
+    waliKelasId: 'guru-3',
+    tahunAjaran: '2024/2025',
+  },
+  {
+    id: 'rombel-x-pbs-1',
+    kode: 'X-AKL-2',
+    nama: 'X Akuntansi dan Keuangan Lembaga 2',
+    tingkat: 10,
+    fase: 'Fase E',
+    jurusanId: 'jur-pbs',
+    waliKelasId: 'guru-3',
     tahunAjaran: '2024/2025',
   },
   {
     id: 'rombel-x-dkv-1',
-    kode: 'X DKV',
-    nama: 'X DKV',
+    kode: 'X-DKV-1',
+    nama: 'X DKV 1',
     tingkat: 10,
     fase: 'Fase E',
     jurusanId: 'jur-dkv',
@@ -183,13 +193,53 @@ export const defaultRombel: Rombel[] = [
     tahunAjaran: '2024/2025',
   },
   {
-    id: 'rombel-x-pbs-1',
-    kode: 'X PBS',
-    nama: 'X PBS',
+    id: 'rombel-x-dkv-2',
+    kode: 'X-DKV-2',
+    nama: 'X DKV 2',
     tingkat: 10,
     fase: 'Fase E',
-    jurusanId: 'jur-pbs',
-    waliKelasId: 'guru-3',
+    jurusanId: 'jur-dkv',
+    waliKelasId: 'guru-2',
+    tahunAjaran: '2024/2025',
+  },
+  {
+    id: 'rombel-x-dkv-3',
+    kode: 'X-DKV-3',
+    nama: 'X DKV 3',
+    tingkat: 10,
+    fase: 'Fase E',
+    jurusanId: 'jur-dkv',
+    waliKelasId: 'guru-2',
+    tahunAjaran: '2024/2025',
+  },
+  {
+    id: 'rombel-x-tsm-1',
+    kode: 'X-TO-1',
+    nama: 'X Teknik Otomotif 1',
+    tingkat: 10,
+    fase: 'Fase E',
+    jurusanId: 'jur-tsm',
+    waliKelasId: 'guru-4',
+    tahunAjaran: '2024/2025',
+  },
+  {
+    id: 'rombel-x-to-2',
+    kode: 'X-TO-2',
+    nama: 'X Teknik Otomotif 2',
+    tingkat: 10,
+    fase: 'Fase E',
+    jurusanId: 'jur-tsm',
+    waliKelasId: 'guru-4',
+    tahunAjaran: '2024/2025',
+  },
+  {
+    id: 'rombel-x-to-3',
+    kode: 'X-TO-3',
+    nama: 'X Teknik Otomotif 3',
+    tingkat: 10,
+    fase: 'Fase E',
+    jurusanId: 'jur-tsm',
+    waliKelasId: 'guru-4',
     tahunAjaran: '2024/2025',
   },
 ];
@@ -357,6 +407,7 @@ export const defaultMataPelajaran: MataPelajaran[] = [
     kode: 'PABP',
     nama: 'Pendidikan Agama Islam dan Budi Pekerti',
     kelompok: 'Kelompok Umum',
+    kktp: 75,
     jenjang: ['SD', 'SMP', 'SMA', 'SMK'],
   },
   {
@@ -364,6 +415,7 @@ export const defaultMataPelajaran: MataPelajaran[] = [
     kode: 'PPKN',
     nama: 'Pendidikan Pancasila',
     kelompok: 'Kelompok Umum',
+    kktp: 75,
     jenjang: ['SD', 'SMP', 'SMA', 'SMK'],
   },
   {
@@ -371,6 +423,7 @@ export const defaultMataPelajaran: MataPelajaran[] = [
     kode: 'BINDO',
     nama: 'Bahasa Indonesia',
     kelompok: 'Kelompok Umum',
+    kktp: 75,
     jenjang: ['SD', 'SMP', 'SMA', 'SMK'],
   },
   {
@@ -378,6 +431,7 @@ export const defaultMataPelajaran: MataPelajaran[] = [
     kode: 'PJOK',
     nama: 'Pendidikan Jasmani, Olahraga dan Kesehatan',
     kelompok: 'Kelompok Umum',
+    kktp: 75,
     jenjang: ['SD', 'SMP', 'SMA', 'SMK'],
   },
   {
@@ -385,6 +439,7 @@ export const defaultMataPelajaran: MataPelajaran[] = [
     kode: 'SEJ',
     nama: 'Sejarah',
     kelompok: 'Kelompok Umum',
+    kktp: 75,
     jenjang: ['SMA', 'SMK'],
   },
   {
@@ -392,6 +447,7 @@ export const defaultMataPelajaran: MataPelajaran[] = [
     kode: 'SENI',
     nama: 'Seni Budaya',
     kelompok: 'Kelompok Umum',
+    kktp: 75,
     jenjang: ['SD', 'SMP', 'SMA', 'SMK'],
   },
 
@@ -401,6 +457,7 @@ export const defaultMataPelajaran: MataPelajaran[] = [
     kode: 'MTK',
     nama: 'Matematika',
     kelompok: 'Kejuruan: Konsentrasi Keahlian',
+    kktp: 75,
     jenjang: ['SD', 'SMP', 'SMA', 'SMK'],
   },
   {
@@ -408,6 +465,7 @@ export const defaultMataPelajaran: MataPelajaran[] = [
     kode: 'BING',
     nama: 'Bahasa Inggris',
     kelompok: 'Kejuruan: Konsentrasi Keahlian',
+    kktp: 75,
     jenjang: ['SMP', 'SMA', 'SMK'],
   },
   {
@@ -415,6 +473,7 @@ export const defaultMataPelajaran: MataPelajaran[] = [
     kode: 'INF',
     nama: 'Informatika',
     kelompok: 'Kejuruan: Dasar Program Keahlian',
+    kktp: 75,
     jenjang: ['SMP', 'SMA', 'SMK'],
   },
   {
@@ -422,6 +481,7 @@ export const defaultMataPelajaran: MataPelajaran[] = [
     kode: 'PIPAS',
     nama: 'Projek Ilmu Pengetahuan Alam dan Sosial',
     kelompok: 'Kejuruan: Dasar Program Keahlian',
+    kktp: 75,
     jenjang: ['SMK'],
   },
   {
@@ -429,6 +489,7 @@ export const defaultMataPelajaran: MataPelajaran[] = [
     kode: 'DDPK',
     nama: 'Dasar-dasar Program Keahlian',
     kelompok: 'Kejuruan: Dasar Program Keahlian',
+    kktp: 75,
     jenjang: ['SMK'],
   },
   {
@@ -436,6 +497,7 @@ export const defaultMataPelajaran: MataPelajaran[] = [
     kode: 'AI',
     nama: 'Koding dan Kecerdasan Artifisial',
     kelompok: 'Mata Pelajaran Pilihan',
+    kktp: 75,
     jenjang: ['SMK'],
   },
   {
@@ -443,6 +505,7 @@ export const defaultMataPelajaran: MataPelajaran[] = [
     kode: 'KK',
     nama: 'Konsentrasi Keahlian',
     kelompok: 'Kejuruan: Konsentrasi Keahlian',
+    kktp: 75,
     jenjang: ['SMK'],
   },
   {
@@ -450,6 +513,7 @@ export const defaultMataPelajaran: MataPelajaran[] = [
     kode: 'KK-TSM',
     nama: 'Konsentrasi Keahlian Teknik Sepeda Motor',
     kelompok: 'Kejuruan: Konsentrasi Keahlian',
+    kktp: 75,
     jenjang: ['SMK'],
   },
   {
@@ -457,6 +521,7 @@ export const defaultMataPelajaran: MataPelajaran[] = [
     kode: 'KK-DKV',
     nama: 'Konsentrasi Keahlian Desain Komunikasi Visual',
     kelompok: 'Kejuruan: Konsentrasi Keahlian',
+    kktp: 75,
     jenjang: ['SMK'],
   },
   {
@@ -464,6 +529,7 @@ export const defaultMataPelajaran: MataPelajaran[] = [
     kode: 'PKK',
     nama: 'Kreativitas, Inovasi dan Kewirausahaan',
     kelompok: 'Projek Kreatif dan Kewirausahaan (PKK)',
+    kktp: 75,
     jenjang: ['SMK'],
   },
   {
@@ -471,6 +537,7 @@ export const defaultMataPelajaran: MataPelajaran[] = [
     kode: 'LAS',
     nama: 'Pengelasan',
     kelompok: 'Mata Pelajaran Pilihan',
+    kktp: 75,
     jenjang: ['SMK'],
   },
   {
@@ -478,6 +545,7 @@ export const defaultMataPelajaran: MataPelajaran[] = [
     kode: 'MSO',
     nama: 'Microsoft Office',
     kelompok: 'Mata Pelajaran Pilihan',
+    kktp: 75,
     jenjang: ['SMK'],
   },
   {
@@ -485,6 +553,7 @@ export const defaultMataPelajaran: MataPelajaran[] = [
     kode: 'LPS',
     nama: 'Layanan Perbankan Syariah',
     kelompok: 'Mata Pelajaran Pilihan',
+    kktp: 75,
     jenjang: ['SMK'],
   },
 
@@ -494,6 +563,7 @@ export const defaultMataPelajaran: MataPelajaran[] = [
     kode: 'PAK',
     nama: 'PAK',
     kelompok: 'Muatan Lokal',
+    kktp: 75,
     jenjang: ['SD', 'SMP', 'SMA', 'SMK'],
   },
   {
@@ -501,6 +571,7 @@ export const defaultMataPelajaran: MataPelajaran[] = [
     kode: 'BLAMPUNG',
     nama: 'Bahasa Lampung',
     kelompok: 'Muatan Lokal',
+    kktp: 75,
     jenjang: ['SD', 'SMP', 'SMA', 'SMK'],
   },
 ];
