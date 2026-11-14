@@ -3,10 +3,21 @@ import { useApp, UserSession } from '../context/AppContext';
 import { Shield, UserCheck, Lock, User, ArrowRight, CheckCircle2, Sparkles, School } from 'lucide-react';
 
 export const LoginView: React.FC = () => {
-  const { login, loginAsDemo, guru, rombel, ekskul, schoolProfile } = useApp();
+  const { login, loginAsDemo, guru, rombel, ekskul, schoolProfile, userAccounts } = useApp();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+
+  const getRoleLabel = (guruId: string, defaultLabel: string) => {
+    const acc = userAccounts?.find(u => u.guruId === guruId || (guruId === 'admin' && u.role === 'admin'));
+    if (!acc) return defaultLabel;
+    if (acc.role === 'admin') return 'Role: Administrator (Akses Penuh)';
+    if (acc.role === 'wali_kelas') {
+      const r = acc.rombelWaliId ? rombel.find(item => item.id === acc.rombelWaliId) : undefined;
+      return `Role: Wali Kelas (${r?.nama || 'Rombel'})`;
+    }
+    return 'Role: Guru Mapel (Hanya Input Mapel)';
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,7 +134,7 @@ export const LoginView: React.FC = () => {
               >
                 <div className="flex items-center justify-between w-full">
                   <span className="px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10px] font-bold">
-                    Role: Administrator
+                    {getRoleLabel('admin', 'Role: Administrator')}
                   </span>
                   <Shield className="w-4 h-4 text-rose-400 group-hover:scale-110 transition" />
                 </div>
@@ -132,7 +143,7 @@ export const LoginView: React.FC = () => {
                     Administrator Sekolah
                   </h4>
                   <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
-                    Akses penuh: CRUD Data Master, Jurusan, Semua Nilai, & Pengaturan Sekolah.
+                    Akses penuh: CRUD Data Master, Jurusan, Manajemen Akun & Role, Semua Nilai, & Pengaturan Sekolah.
                   </p>
                 </div>
               </button>
@@ -144,7 +155,7 @@ export const LoginView: React.FC = () => {
               >
                 <div className="flex items-center justify-between w-full">
                   <span className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-bold">
-                    Wali Kelas XII & Pembina
+                    {getRoleLabel('guru-1', 'Wali Kelas XII & Pembina')}
                   </span>
                   <UserCheck className="w-4 h-4 text-amber-400 group-hover:scale-110 transition" />
                 </div>
@@ -153,7 +164,7 @@ export const LoginView: React.FC = () => {
                     Bambang Irawan, S.T., M.Pd.
                   </h4>
                   <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
-                    Guru TSM • Wali Kelas XII TSM (Bisa Cetak Rapor & PKL) • Pembina Otomotif Club.
+                    Guru Kejuruan Otomotif • Wali Kelas XII TSM (Cetak Rapor & PKL) • Pembina Klub Otomotif.
                   </p>
                 </div>
               </button>
@@ -165,7 +176,7 @@ export const LoginView: React.FC = () => {
               >
                 <div className="flex items-center justify-between w-full">
                   <span className="px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] font-bold">
-                    Wali Kelas XI & Pembina
+                    {getRoleLabel('guru-2', 'Wali Kelas XI & Pembina')}
                   </span>
                   <UserCheck className="w-4 h-4 text-indigo-400 group-hover:scale-110 transition" />
                 </div>
@@ -186,7 +197,7 @@ export const LoginView: React.FC = () => {
               >
                 <div className="flex items-center justify-between w-full">
                   <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">
-                    Wali Kelas XI & Pembina
+                    {getRoleLabel('guru-3', 'Wali Kelas XI & Pembina')}
                   </span>
                   <UserCheck className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition" />
                 </div>
@@ -200,7 +211,7 @@ export const LoginView: React.FC = () => {
                 </div>
               </button>
 
-              {/* 5. AGUS SETIAWAN (Guru Mapel Umum BINDO & Wali Kelas X TO) */}
+              {/* 5. AGUS SETIAWAN (Guru Mapel Umum - Role: Guru Mapel murni) */}
               <button
                 onClick={() => loginAsDemo('guru-4')}
                 className="col-span-1 sm:col-span-2 bg-slate-800/90 hover:bg-slate-700/80 border border-slate-700 hover:border-blue-500/50 p-3 rounded-2xl text-left transition-all group flex items-center justify-between cursor-pointer"
@@ -208,14 +219,14 @@ export const LoginView: React.FC = () => {
                 <div>
                   <div className="flex items-center gap-2 mb-0.5">
                     <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px] font-bold">
-                      Guru Mapel Umum & Wali Kelas X
+                      {getRoleLabel('guru-4', 'Role: Guru Mapel (Hanya Input Mapel)')}
                     </span>
                     <h4 className="font-bold text-white text-xs group-hover:text-blue-400 transition">
                       Agus Setiawan, Drs., M.Hum.
                     </h4>
                   </div>
                   <p className="text-[11px] text-slate-400">
-                    Guru Bahasa Indonesia • Wali Kelas X Teknik Otomotif 1 • Pembina Pramuka (Wajib) & Futsal.
+                    Guru Mata Pelajaran Bahasa Indonesia • Hak Akses: Terbatas hanya input Nilai & TP mapel yang diampu saja.
                   </p>
                 </div>
                 <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-blue-400 group-hover:translate-x-1 transition" />

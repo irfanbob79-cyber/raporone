@@ -179,3 +179,15 @@ export interface NilaiUKK {
   statusKompeten: 'Belum Kompeten' | 'Cukup Kompeten' | 'Kompeten' | 'Sangat Kompeten';
   nomorSertifikat?: string;
 }
+
+export interface UserAccount {
+  id: string;
+  username: string;
+  nama: string;
+  role: 'admin' | 'guru' | 'wali_kelas';
+  guruId?: string;
+  rombelWaliId?: string;
+  isPembinaEkskul?: boolean;
+  ekskulId?: string;
+  keterangan?: string;
+}

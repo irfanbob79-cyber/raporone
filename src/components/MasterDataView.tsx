@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Siswa, Guru, Rombel, MataPelajaran, KelompokMapel, Jurusan } from '../types';
+import { Siswa, Guru, Rombel, MataPelajaran, KelompokMapel, Jurusan, UserAccount } from '../types';
 import {
   Users,
   GraduationCap,
@@ -14,7 +14,9 @@ import {
   Trash2,
   X,
   Check,
-  Compass
+  Compass,
+  ShieldCheck,
+  UserCog
 } from 'lucide-react';
 import { downloadTemplateSiswa, downloadTemplateGuru } from '../utils/excel';
 
@@ -25,6 +27,11 @@ export const MasterDataView: React.FC<{ onOpenImport: () => void }> = ({ onOpenI
     rombel,
     mapel,
     jurusan,
+    ekskul,
+    userAccounts,
+    updateUserAccount,
+    addUserAccount,
+    deleteUserAccount,
     schoolProfile,
     addJurusan,
     updateJurusan,
@@ -43,14 +50,15 @@ export const MasterDataView: React.FC<{ onOpenImport: () => void }> = ({ onOpenI
     deleteMapel
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'siswa' | 'guru' | 'rombel' | 'mapel' | 'jurusan'>('siswa');
+  const [activeTab, setActiveTab] = useState<'siswa' | 'guru' | 'rombel' | 'mapel' | 'jurusan' | 'roles'>('siswa');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Modal states for CRUD
-  const [modalType, setModalType] = useState<'siswa' | 'guru' | 'rombel' | 'mapel' | 'jurusan' | null>(null);
+  const [modalType, setModalType] = useState<'siswa' | 'guru' | 'rombel' | 'mapel' | 'jurusan' | 'roles' | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
   // Form states
+  const [accountForm, setAccountForm] = useState<Partial<UserAccount>>({});
   const [jurusanForm, setJurusanForm] = useState<Partial<Jurusan>>({});
   const [siswaForm, setSiswaForm] = useState<Partial<Siswa>>({});
   const [guruForm, setGuruForm] = useState<Partial<Guru>>({});
@@ -232,19 +240,60 @@ export const MasterDataView: React.FC<{ onOpenImport: () => void }> = ({ onOpenI
     setModalType(null);
   };
 
+  // Handler Buka Form Akun & Role
+  const handleOpenAddAccount = () => {
+    setIsEditing(false);
+    setAccountForm({
+      username: '',
+      nama: '',
+      role: 'guru',
+      guruId: guru[0]?.id || '',
+      keterangan: 'Guru Mapel (Hanya input nilai mapel ampuan)'
+    });
+    setModalType('roles');
+  };
+
+  const handleOpenEditAccount = (item: UserAccount) => {
+    setIsEditing(true);
+    setAccountForm({ ...item });
+    setModalType('roles');
+  };
+
+  const handleSaveAccount = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!accountForm.username || !accountForm.nama || !accountForm.role) return;
+
+    if (isEditing && accountForm.id) {
+      updateUserAccount(accountForm as UserAccount);
+    } else {
+      addUserAccount(accountForm as Omit<UserAccount, 'id'>);
+    }
+    setModalType(null);
+  };
+
   return (
     <div className="space-y-4 pb-20">
       {/* Top Banner & Tabs */}
       <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm space-y-3">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
-            <h3 className="font-bold text-slate-800 text-base">Manajemen Data Master (CRUD)</h3>
+            <h3 className="font-bold text-slate-800 text-base">Manajemen Data Master & Role Akun</h3>
             <p className="text-xs text-slate-500">
-              Tambah, lihat, edit, dan hapus data Jurusan, Siswa, Guru, Rombel, dan Mata Pelajaran
+              Kelola data Siswa, Guru, Rombel, Mapel, Jurusan, serta Atur Hak Akses Role setiap Pengguna
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+            {activeTab === 'roles' && (
+              <button
+                onClick={handleOpenAddAccount}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-sm transition active:scale-95"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Tambah Akun Pengguna</span>
+              </button>
+            )}
+
             {activeTab === 'jurusan' && (
               <button
                 onClick={handleOpenAddJurusan}
@@ -359,6 +408,15 @@ export const MasterDataView: React.FC<{ onOpenImport: () => void }> = ({ onOpenI
           >
             <Compass className="w-4 h-4" />
             Jurusan & Konsentrasi ({jurusan.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('roles')}
+            className={`flex items-center gap-2 pb-2.5 text-xs font-bold border-b-2 transition whitespace-nowrap ${
+              activeTab === 'roles' ? 'border-purple-600 text-purple-600' : 'border-transparent text-slate-500'
+            }`}
+          >
+            <ShieldCheck className="w-4 h-4" />
+            Pengaturan Akun & Role ({userAccounts.length})
           </button>
         </div>
 
@@ -663,6 +721,123 @@ export const MasterDataView: React.FC<{ onOpenImport: () => void }> = ({ onOpenI
                       </td>
                     </tr>
                   ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 6: PENGATURAN AKUN & ROLE PENGGUNA */}
+      {activeTab === 'roles' && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden space-y-3 p-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+            <div>
+              <h4 className="font-extrabold text-slate-800 text-sm flex items-center gap-2">
+                <UserCog className="w-4 h-4 text-purple-600" />
+                Daftar Akun Pengguna & Hak Akses Peran (RBAC)
+              </h4>
+              <p className="text-xs text-slate-500">
+                Admin dapat mengatur dan mengubah peran akun menjadi <strong>Guru Mapel</strong> (hanya input mapel), <strong>Wali Kelas</strong>, atau <strong>Administrator</strong>.
+              </p>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+                <tr>
+                  <th className="p-3 w-10 text-center">No</th>
+                  <th className="p-3">Nama Pengguna</th>
+                  <th className="p-3">Username / NIP</th>
+                  <th className="p-3">Peran (Role)</th>
+                  <th className="p-3">Tugas Wali Kelas</th>
+                  <th className="p-3">Tugas Pembina Ekskul</th>
+                  <th className="p-3">Keterangan</th>
+                  <th className="p-3 w-28 text-center">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {userAccounts
+                  .filter(u =>
+                    u.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    u.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    u.role.toLowerCase().includes(searchQuery.toLowerCase())
+                  )
+                  .map((acc, idx) => {
+                    const waliRombel = acc.rombelWaliId ? rombel.find(r => r.id === acc.rombelWaliId) : undefined;
+                    const pembinaEks = acc.ekskulId ? ekskul.find(e => e.id === acc.ekskulId) : undefined;
+
+                    return (
+                      <tr key={acc.id} className="hover:bg-slate-50">
+                        <td className="p-3 text-center text-slate-400">{idx + 1}</td>
+                        <td className="p-3 font-bold text-slate-800">
+                          <div>{acc.nama}</div>
+                        </td>
+                        <td className="p-3 font-mono font-medium text-slate-600">{acc.username}</td>
+                        <td className="p-3">
+                          {acc.role === 'admin' ? (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-purple-100 text-purple-800 border border-purple-200 whitespace-nowrap">
+                              👑 Administrator
+                            </span>
+                          ) : acc.role === 'wali_kelas' ? (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-800 border border-blue-200 whitespace-nowrap">
+                              ⭐ Wali Kelas
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200 whitespace-nowrap">
+                              📚 Guru Mapel (Hanya Input)
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3">
+                          {waliRombel ? (
+                            <span className="font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 text-[11px]">
+                              {waliRombel.nama}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 italic text-[11px]">-</span>
+                          )}
+                        </td>
+                        <td className="p-3">
+                          {pembinaEks ? (
+                            <span className="font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 text-[11px]">
+                              {pembinaEks.nama}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 italic text-[11px]">-</span>
+                          )}
+                        </td>
+                        <td className="p-3 text-slate-500 max-w-xs truncate text-[11px]">
+                          {acc.keterangan || '-'}
+                        </td>
+                        <td className="p-3 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              onClick={() => handleOpenEditAccount(acc)}
+                              className="px-2.5 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-[11px] font-bold transition flex items-center gap-1"
+                              title="Ubah Role & Penugasan Akun"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                              <span>Ubah Role</span>
+                            </button>
+                            {acc.role !== 'admin' && (
+                              <button
+                                onClick={() => {
+                                  if (confirm(`Hapus akun pengguna ${acc.nama}?`)) {
+                                    deleteUserAccount(acc.id);
+                                  }
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50"
+                                title="Hapus Akun"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
               </tbody>
             </table>
           </div>
@@ -1144,6 +1319,216 @@ export const MasterDataView: React.FC<{ onOpenImport: () => void }> = ({ onOpenI
                   className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-sm"
                 >
                   Simpan Jurusan
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL CRUD AKUN & ROLE */}
+      {modalType === 'roles' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3">
+              <div className="p-2 bg-purple-100 text-purple-700 rounded-xl">
+                <UserCog className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-slate-800 text-base">
+                  {isEditing ? 'Ubah Peran & Hak Akses Akun' : 'Tambah Akun Pengguna Baru'}
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Tentukan peran (Admin, Wali Kelas, atau Guru Mapel) dan penugasan kelas/ekskul
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleSaveAccount} className="space-y-3.5 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold mb-1 text-slate-700">Nama Lengkap</label>
+                  <input
+                    type="text"
+                    value={accountForm.nama || ''}
+                    onChange={(e) => setAccountForm({ ...accountForm, nama: e.target.value })}
+                    placeholder="Contoh: Drs. Agus Setiawan"
+                    className="w-full p-2.5 border border-slate-200 rounded-xl font-bold"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1 text-slate-700">Username / NIP Login</label>
+                  <input
+                    type="text"
+                    value={accountForm.username || ''}
+                    onChange={(e) => setAccountForm({ ...accountForm, username: e.target.value })}
+                    placeholder="Contoh: 197904052008011012"
+                    className="w-full p-2.5 border border-slate-200 rounded-xl font-mono font-bold"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Pilih Guru terkait */}
+              <div>
+                <label className="block font-semibold mb-1 text-slate-700">Tautkan ke Data Guru (PTK)</label>
+                <select
+                  value={accountForm.guruId || ''}
+                  onChange={(e) => {
+                    const g = guru.find(item => item.id === e.target.value);
+                    setAccountForm({
+                      ...accountForm,
+                      guruId: e.target.value,
+                      nama: g ? `${g.gelarDepan ? g.gelarDepan + ' ' : ''}${g.nama}${g.gelarBelakang ? ', ' + g.gelarBelakang : ''}` : accountForm.nama,
+                      username: g?.nip || accountForm.username
+                    });
+                  }}
+                  className="w-full p-2.5 border border-slate-200 rounded-xl font-semibold bg-slate-50"
+                >
+                  <option value="">-- Akun Mandiri / Khusus Admin --</option>
+                  {guru.map(g => (
+                    <option key={g.id} value={g.id}>
+                      {g.nama} {g.gelarBelakang || ''} (NIP: {g.nip || '-'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Pilihan Role Utama */}
+              <div className="p-3 bg-purple-50/50 rounded-xl border border-purple-100 space-y-2">
+                <label className="block font-extrabold text-purple-900">
+                  Peran Akun (Hak Akses):
+                </label>
+                <div className="space-y-2">
+                  <label className="flex items-start gap-2.5 p-2 rounded-lg bg-white border border-slate-200 cursor-pointer hover:border-purple-300">
+                    <input
+                      type="radio"
+                      name="accountRole"
+                      value="guru"
+                      checked={accountForm.role === 'guru'}
+                      onChange={() => setAccountForm({ ...accountForm, role: 'guru', rombelWaliId: undefined })}
+                      className="mt-0.5 text-purple-600"
+                    />
+                    <div>
+                      <span className="font-bold text-slate-800 block text-xs">📚 Guru Mapel</span>
+                      <span className="text-[11px] text-slate-500">
+                        Hanya bisa menginput nilai dan tujuan pembelajaran untuk mata pelajaran yang diampunya. Tidak bisa mencetak rapor.
+                      </span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-2.5 p-2 rounded-lg bg-white border border-slate-200 cursor-pointer hover:border-purple-300">
+                    <input
+                      type="radio"
+                      name="accountRole"
+                      value="wali_kelas"
+                      checked={accountForm.role === 'wali_kelas'}
+                      onChange={() => setAccountForm({ ...accountForm, role: 'wali_kelas', rombelWaliId: rombel[0]?.id })}
+                      className="mt-0.5 text-purple-600"
+                    />
+                    <div>
+                      <span className="font-bold text-slate-800 block text-xs">⭐ Wali Kelas</span>
+                      <span className="text-[11px] text-slate-500">
+                        Bisa menginput nilai mapel ampuannya + menginput absensi rombel + mencetak dokumen Rapor Resmi untuk kelasnya.
+                      </span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-2.5 p-2 rounded-lg bg-white border border-slate-200 cursor-pointer hover:border-purple-300">
+                    <input
+                      type="radio"
+                      name="accountRole"
+                      value="admin"
+                      checked={accountForm.role === 'admin'}
+                      onChange={() => setAccountForm({ ...accountForm, role: 'admin' })}
+                      className="mt-0.5 text-purple-600"
+                    />
+                    <div>
+                      <span className="font-bold text-slate-800 block text-xs">👑 Administrator Sistem</span>
+                      <span className="text-[11px] text-slate-500">
+                        Akses penuh tanpa batas: kelola seluruh data master, ubah role pengguna lain, input semua nilai, dan cetak rapor semua kelas.
+                      </span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Jika Wali Kelas: Pilih Rombel */}
+              {accountForm.role === 'wali_kelas' && (
+                <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-200 space-y-1.5 animate-fadeIn">
+                  <label className="block font-bold text-blue-900">
+                    Pilih Rombongan Belajar yang Diwali:
+                  </label>
+                  <select
+                    value={accountForm.rombelWaliId || rombel[0]?.id || ''}
+                    onChange={(e) => setAccountForm({ ...accountForm, rombelWaliId: e.target.value })}
+                    className="w-full p-2.5 border border-blue-300 rounded-xl font-bold bg-white text-blue-950"
+                    required
+                  >
+                    {rombel.map(r => (
+                      <option key={r.id} value={r.id}>{r.nama}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Opsi Pembina Ekstrakurikuler */}
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={accountForm.isPembinaEkskul || false}
+                    onChange={(e) => setAccountForm({
+                      ...accountForm,
+                      isPembinaEkskul: e.target.checked,
+                      ekskulId: e.target.checked ? (accountForm.ekskulId || ekskul[0]?.id) : undefined
+                    })}
+                    className="rounded text-purple-600"
+                  />
+                  <span className="font-bold text-slate-800">Tugaskan sebagai Pembina Ekstrakurikuler</span>
+                </label>
+
+                {accountForm.isPembinaEkskul && (
+                  <div className="pt-1.5 space-y-1">
+                    <label className="block font-semibold text-slate-600">Nama Ekstrakurikuler yang Dibina:</label>
+                    <select
+                      value={accountForm.ekskulId || ekskul[0]?.id || ''}
+                      onChange={(e) => setAccountForm({ ...accountForm, ekskulId: e.target.value })}
+                      className="w-full p-2.5 border border-slate-200 rounded-xl font-semibold bg-white"
+                    >
+                      {ekskul.map(e => (
+                        <option key={e.id} value={e.id}>{e.nama} ({e.kategori})</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1 text-slate-700">Catatan / Keterangan Akun</label>
+                <input
+                  type="text"
+                  value={accountForm.keterangan || ''}
+                  onChange={(e) => setAccountForm({ ...accountForm, keterangan: e.target.value })}
+                  placeholder="Contoh: Guru Mapel Bahasa Indonesia"
+                  className="w-full p-2 border border-slate-200 rounded-xl font-semibold"
+                />
+              </div>
+
+              <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setModalType(null)}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-semibold transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold shadow-md shadow-purple-500/20 transition active:scale-95"
+                >
+                  Simpan Peran & Akun
                 </button>
               </div>
             </form>

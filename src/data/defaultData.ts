@@ -1,4 +1,4 @@
-import { SchoolProfile, Jurusan, Guru, Rombel, Siswa, MataPelajaran, Pembelajaran, TujuanPembelajaran, NilaiSiswa, Kehadiran, NilaiPKL, NilaiUKK, Ekstrakurikuler, AnggotaEkskul } from '../types';
+import { SchoolProfile, Jurusan, Guru, Rombel, Siswa, MataPelajaran, Pembelajaran, TujuanPembelajaran, NilaiSiswa, Kehadiran, NilaiPKL, NilaiUKK, Ekstrakurikuler, AnggotaEkskul, UserAccount } from '../types';
 
 export const defaultSchoolProfile: SchoolProfile = {
   npsn: '10814674',
@@ -4542,4 +4542,55 @@ export const defaultAnggotaEkskul: AnggotaEkskul[] = [
   { id: 'ang-3', ekskulId: 'eks-pramuka', siswaId: 'siswa-xii-2', semester: '1 (Ganjil)', predikat: 'Baik', keterangan: 'Mengikuti latihan rutin pramuka dengan tertib dan mematuhi tata tertib.' },
   { id: 'ang-4', ekskulId: 'eks-futsal', siswaId: 'siswa-xii-3', semester: '1 (Ganjil)', predikat: 'Sangat Baik', keterangan: 'Menjadi pemain inti tim futsal sekolah dan menjunjung tinggi sportivitas.' },
   { id: 'ang-5', ekskulId: 'eks-pramuka', siswaId: 'siswa-xii-3', semester: '1 (Ganjil)', predikat: 'Baik', keterangan: 'Aktif dalam kegiatan baris-berbaris dan penjelajahan alam.' }
+];
+
+export const defaultUserAccounts: UserAccount[] = [
+  {
+    id: 'user-admin',
+    username: 'admin',
+    nama: 'Administrator Sistem',
+    role: 'admin',
+    keterangan: 'Administrator Sistem (Akses Penuh Seluruh Modul)'
+  },
+  {
+    id: 'user-guru-1',
+    username: '197508102005011005',
+    nama: 'Bambang Irawan, S.Pd.',
+    role: 'wali_kelas',
+    guruId: 'guru-1',
+    rombelWaliId: 'rombel-xii-tsm-1',
+    isPembinaEkskul: true,
+    ekskulId: 'eks-otomotif',
+    keterangan: 'Wali Kelas XII TSM & Pembina Otomotif Club'
+  },
+  {
+    id: 'user-guru-2',
+    username: '198203152010012015',
+    nama: 'Siti Rahmawati, S.Kom., M.T.',
+    role: 'wali_kelas',
+    guruId: 'guru-2',
+    rombelWaliId: 'rombel-xi-dkv-1',
+    isPembinaEkskul: true,
+    ekskulId: 'eks-dkv',
+    keterangan: 'Wali Kelas XI DKV & Pembina Desain Kreatif'
+  },
+  {
+    id: 'user-guru-3',
+    username: '198811202014022003',
+    nama: 'Dewi Lestari, S.E., Ak.',
+    role: 'wali_kelas',
+    guruId: 'guru-3',
+    rombelWaliId: 'rombel-xi-pbs-1',
+    isPembinaEkskul: true,
+    ekskulId: 'eks-pmr',
+    keterangan: 'Wali Kelas XI PBS & Pembina PMR'
+  },
+  {
+    id: 'user-guru-4',
+    username: '197904052008011012',
+    nama: 'Drs. Agus Setiawan, M.Hum.',
+    role: 'guru', // Role: Guru Mapel (Hanya input mapel yang diampu)
+    guruId: 'guru-4',
+    keterangan: 'Guru Mapel Bahasa Indonesia (Hanya Input Nilai Mapel Ampuan)'
+  }
 ];

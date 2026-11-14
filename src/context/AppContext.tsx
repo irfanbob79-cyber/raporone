@@ -15,7 +15,8 @@ import {
   Ekstrakurikuler,
   AnggotaEkskul,
   SchoolLevel,
-  UserRole
+  UserRole,
+  UserAccount
 } from '../types';
 import {
   defaultSchoolProfile,
@@ -31,7 +32,8 @@ import {
   defaultNilaiPKL,
   defaultNilaiUKK,
   defaultEkstrakurikuler,
-  defaultAnggotaEkskul
+  defaultAnggotaEkskul,
+  defaultUserAccounts
 } from '../data/defaultData';
 import { generateDeskripsiCapaian } from '../utils/narrativeEngine';
 
@@ -66,6 +68,10 @@ interface AppContextType {
 
   // User Auth & Session
   currentUser: UserSession | null;
+  userAccounts: UserAccount[];
+  updateUserAccount: (item: UserAccount) => void;
+  addUserAccount: (item: Omit<UserAccount, 'id'>) => void;
+  deleteUserAccount: (id: string) => void;
   login: (username: string, password?: string) => boolean;
   loginAsDemo: (userId: string) => void;
   logout: () => void;
@@ -206,6 +212,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : defaultAnggotaEkskul;
   });
 
+  const [userAccounts, setUserAccounts] = useState<UserAccount[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_user_accounts`);
+    return saved ? JSON.parse(saved) : defaultUserAccounts;
+  });
+
   const [currentUser, setCurrentUser] = useState<UserSession | null>(() => {
     const saved = localStorage.getItem(`${STORAGE_KEY}_user_session`);
     if (saved) {
@@ -240,6 +251,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const login = (usernameInput: string, _passwordInput?: string): boolean => {
     const trimmed = usernameInput.trim().toLowerCase();
+
+    // 1. Cek di daftar userAccounts yang dikonfigurasi Admin
+    const foundAcc = userAccounts.find(u => 
+      u.username.toLowerCase() === trimmed || 
+      (u.guruId && guru.find(g => g.id === u.guruId && (g.nip?.toLowerCase() === trimmed || g.email.toLowerCase() === trimmed)))
+    );
+
+    if (foundAcc) {
+      const waliRombel = foundAcc.rombelWaliId 
+        ? rombel.find(r => r.id === foundAcc.rombelWaliId) 
+        : rombel.find(r => r.waliKelasId === foundAcc.guruId);
+      const pembinaEks = foundAcc.ekskulId 
+        ? ekskul.find(e => e.id === foundAcc.ekskulId) 
+        : ekskul.find(e => e.pembinaGuruId === foundAcc.guruId);
+
+      const sess: UserSession = {
+        id: foundAcc.id,
+        username: foundAcc.username,
+        nama: foundAcc.nama,
+        role: foundAcc.role,
+        guruId: foundAcc.guruId,
+        rombelWaliId: foundAcc.role === 'wali_kelas' ? (foundAcc.rombelWaliId || waliRombel?.id) : undefined,
+        namaRombelWali: foundAcc.role === 'wali_kelas' ? (waliRombel?.nama || 'Kelas Wali') : undefined,
+        isPembinaEkskul: foundAcc.isPembinaEkskul ?? !!pembinaEks,
+        namaEkskul: pembinaEks?.nama
+      };
+
+      setCurrentUser(sess);
+      setActiveRole(foundAcc.role);
+      if (foundAcc.guruId) setCurrentGuruId(foundAcc.guruId);
+      if (sess.rombelWaliId) setSelectedRombelId(sess.rombelWaliId);
+      localStorage.setItem(`${STORAGE_KEY}_user_session`, JSON.stringify(sess));
+      return true;
+    }
+
     if (trimmed === 'admin' || trimmed === 'administrator') {
       const sess: UserSession = {
         id: 'admin',
@@ -291,6 +337,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const loginAsDemo = (userId: string) => {
+    // Cek di userAccounts terlebih dahulu
+    const foundAcc = userAccounts.find(u => u.id === userId || u.guruId === userId || (userId === 'admin' && u.role === 'admin'));
+    if (foundAcc) {
+      const waliRombel = foundAcc.rombelWaliId 
+        ? rombel.find(r => r.id === foundAcc.rombelWaliId) 
+        : rombel.find(r => r.waliKelasId === foundAcc.guruId);
+      const pembinaEks = foundAcc.ekskulId 
+        ? ekskul.find(e => e.id === foundAcc.ekskulId) 
+        : ekskul.find(e => e.pembinaGuruId === foundAcc.guruId);
+
+      const sess: UserSession = {
+        id: foundAcc.id,
+        username: foundAcc.username,
+        nama: foundAcc.nama,
+        role: foundAcc.role,
+        guruId: foundAcc.guruId,
+        rombelWaliId: foundAcc.role === 'wali_kelas' ? (foundAcc.rombelWaliId || waliRombel?.id) : undefined,
+        namaRombelWali: foundAcc.role === 'wali_kelas' ? (waliRombel?.nama || 'Kelas Wali') : undefined,
+        isPembinaEkskul: foundAcc.isPembinaEkskul ?? !!pembinaEks,
+        namaEkskul: pembinaEks?.nama
+      };
+
+      setCurrentUser(sess);
+      setActiveRole(foundAcc.role);
+      if (foundAcc.guruId) setCurrentGuruId(foundAcc.guruId);
+      if (sess.rombelWaliId) setSelectedRombelId(sess.rombelWaliId);
+      localStorage.setItem(`${STORAGE_KEY}_user_session`, JSON.stringify(sess));
+      return;
+    }
+
     if (userId === 'admin') {
       const sess: UserSession = {
         id: 'admin',
@@ -354,7 +430,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem(`${STORAGE_KEY}_ukk`, JSON.stringify(nilaiUKK));
     localStorage.setItem(`${STORAGE_KEY}_ekskul`, JSON.stringify(ekskul));
     localStorage.setItem(`${STORAGE_KEY}_anggota_ekskul`, JSON.stringify(anggotaEkskul));
-  }, [schoolProfile, jurusan, guru, rombel, siswa, mapel, pembelajaran, tujuanPembelajaran, nilaiSiswa, kehadiran, nilaiPKL, nilaiUKK, ekskul, anggotaEkskul]);
+    localStorage.setItem(`${STORAGE_KEY}_user_accounts`, JSON.stringify(userAccounts));
+  }, [schoolProfile, jurusan, guru, rombel, siswa, mapel, pembelajaran, tujuanPembelajaran, nilaiSiswa, kehadiran, nilaiPKL, nilaiUKK, ekskul, anggotaEkskul, userAccounts]);
 
   const updateSchoolProfile = (newProfile: Partial<SchoolProfile>) => {
     setSchoolProfile(prev => ({ ...prev, ...newProfile }));
@@ -372,6 +449,49 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ? 'SMPN 1 LABUHAN MARINGGAI'
         : 'SDN 1 KARANG ANYAR'
     }));
+  };
+
+  // CRUD USER ACCOUNTS & PENGATURAN ROLE
+  const updateUserAccount = (item: UserAccount) => {
+    setUserAccounts(prev => prev.map(u => u.id === item.id ? item : u));
+
+    // Sinkronisasi wali kelas ke rombel jika diatur
+    if (item.role === 'wali_kelas' && item.rombelWaliId && item.guruId) {
+      setRombel(prev => prev.map(r => r.id === item.rombelWaliId ? { ...r, waliKelasId: item.guruId! } : r));
+    }
+
+    // Sinkronisasi pembina ke ekskul jika diatur
+    if (item.isPembinaEkskul && item.ekskulId && item.guruId) {
+      setEkskul(prev => prev.map(e => e.id === item.ekskulId ? { ...e, pembinaGuruId: item.guruId } : e));
+    }
+
+    // Jika akun yang diubah adalah akun yang sedang aktif login, perbarui session live
+    if (currentUser && (currentUser.id === item.id || currentUser.guruId === item.guruId)) {
+      const targetRombel = item.rombelWaliId ? rombel.find(r => r.id === item.rombelWaliId) : undefined;
+      const targetEkskul = item.ekskulId ? ekskul.find(e => e.id === item.ekskulId) : undefined;
+
+      const updatedSess: UserSession = {
+        ...currentUser,
+        nama: item.nama,
+        role: item.role,
+        rombelWaliId: item.role === 'wali_kelas' ? item.rombelWaliId : undefined,
+        namaRombelWali: item.role === 'wali_kelas' ? targetRombel?.nama : undefined,
+        isPembinaEkskul: !!item.isPembinaEkskul,
+        namaEkskul: item.isPembinaEkskul ? targetEkskul?.nama : undefined
+      };
+      setCurrentUser(updatedSess);
+      setActiveRole(item.role);
+      localStorage.setItem(`${STORAGE_KEY}_user_session`, JSON.stringify(updatedSess));
+    }
+  };
+
+  const addUserAccount = (item: Omit<UserAccount, 'id'>) => {
+    const newItem: UserAccount = { ...item, id: `user-${Date.now()}` };
+    setUserAccounts(prev => [...prev, newItem]);
+  };
+
+  const deleteUserAccount = (id: string) => {
+    setUserAccounts(prev => prev.filter(u => u.id !== id));
   };
 
   // CRUD JURUSAN
@@ -630,6 +750,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setNilaiUKK(defaultNilaiUKK);
     setEkskul(defaultEkstrakurikuler);
     setAnggotaEkskul(defaultAnggotaEkskul);
+    setUserAccounts(defaultUserAccounts);
   };
 
   return (
@@ -649,6 +770,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         nilaiUKK,
         ekskul,
         anggotaEkskul,
+        userAccounts,
+        updateUserAccount,
+        addUserAccount,
+        deleteUserAccount,
         currentUser,
         login,
         loginAsDemo,
