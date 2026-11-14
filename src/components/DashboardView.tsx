@@ -14,7 +14,10 @@ import {
   ArrowRight,
   School,
   CheckCircle2,
-  Clock
+  Clock,
+  Compass,
+  FileText,
+  Target
 } from 'lucide-react';
 
 interface DashboardViewProps {
@@ -28,12 +31,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenImport,
   onOpenSettings
 }) => {
-  const { schoolProfile, siswa, guru, rombel, mapel, nilaiSiswa } = useApp();
+  const { schoolProfile, siswa, guru, rombel, mapel, jurusan, nilaiSiswa, activeRole, currentUser } = useApp();
 
-  // Progress estimation
-  const totalEntriesNeeded = siswa.length * 3; // sample approximation
-  const totalEntriesFilled = nilaiSiswa.length;
-  const progressPercent = Math.min(100, Math.round((totalEntriesFilled / Math.max(1, totalEntriesNeeded)) * 100));
+  const isWali = activeRole === 'wali_kelas';
+  const isAdmin = activeRole === 'admin';
 
   return (
     <div className="space-y-6 pb-20">
@@ -45,11 +46,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <span>Kurikulum Merdeka • {schoolProfile.jenjang}</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Selamat Datang di <span className="text-amber-300">eRaporOne</span>
+            Selamat Datang, <span className="text-amber-300">{currentUser?.nama || 'Bapak/Ibu Pendidik'}</span>
           </h2>
           <p className="text-xs sm:text-sm text-blue-100 font-medium leading-relaxed">
             Sistem informasi penilaian rapor terpadu untuk <strong>{schoolProfile.namaSekolah}</strong>.
-            Cepat, simpel, bebas ribet, dan siap digunakan langsung dari HP, tablet, maupun laptop.
+            {isWali && currentUser?.namaRombelWali ? ` Anda bertugas sebagai Wali Kelas ${currentUser.namaRombelWali}.` : ''}
+            {isAdmin ? ' Anda memiliki akses administrator penuh untuk seluruh data master dan konfigurasi sekolah.' : ''}
           </p>
 
           <div className="pt-2 flex flex-wrap gap-2.5">
@@ -61,13 +63,45 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               Mulai Input Nilai & Deskripsi
             </button>
 
-            <button
-              onClick={onOpenImport}
-              className="flex items-center gap-2 px-4 py-2.5 bg-blue-600/60 hover:bg-blue-600 border border-white/20 text-white font-semibold rounded-xl text-xs transition active:scale-95"
-            >
-              <FileSpreadsheet className="w-4 h-4" />
-              Import Data Master Excel
-            </button>
+            {isWali && (
+              <button
+                onClick={() => setActiveTab('rapor')}
+                className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold rounded-xl text-xs shadow-md transition active:scale-95"
+              >
+                <Printer className="w-4 h-4" />
+                Cetak Rapor Rombel
+              </button>
+            )}
+
+            {isWali && (
+              <button
+                onClick={() => setActiveTab('kehadiran')}
+                className="flex items-center gap-2 px-4 py-2.5 bg-white/20 hover:bg-white/30 text-white font-semibold rounded-xl text-xs transition active:scale-95 border border-white/30"
+              >
+                <CalendarCheck className="w-4 h-4" />
+                Absensi Siswa
+              </button>
+            )}
+
+            {!isWali && !isAdmin && (
+              <button
+                onClick={() => setActiveTab('tp')}
+                className="flex items-center gap-2 px-4 py-2.5 bg-blue-600/60 hover:bg-blue-600 border border-white/20 text-white font-semibold rounded-xl text-xs transition active:scale-95"
+              >
+                <Target className="w-4 h-4" />
+                Tujuan Pembelajaran
+              </button>
+            )}
+
+            {isAdmin && (
+              <button
+                onClick={onOpenImport}
+                className="flex items-center gap-2 px-4 py-2.5 bg-blue-600/60 hover:bg-blue-600 border border-white/20 text-white font-semibold rounded-xl text-xs transition active:scale-95"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                Import Data Master Excel
+              </button>
+            )}
           </div>
         </div>
 
@@ -77,48 +111,61 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       {/* Key Metric Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3.5">
-          <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl">
-            <GraduationCap className="w-6 h-6" />
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+        {schoolProfile.jenjang === 'SMK' && (
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3">
+            <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl shrink-0">
+              <Compass className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="text-[10px] font-semibold text-slate-400 block uppercase">Jurusan</span>
+              <span className="text-xl font-extrabold text-slate-900">{jurusan.length}</span>
+              <span className="text-[10px] text-slate-500 block">Konsentrasi</span>
+            </div>
+          </div>
+        )}
+
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3">
+          <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl shrink-0">
+            <GraduationCap className="w-5 h-5" />
           </div>
           <div>
-            <span className="text-[11px] font-semibold text-slate-400 block uppercase">Total Siswa</span>
-            <span className="text-xl sm:text-2xl font-extrabold text-slate-900">{siswa.length}</span>
+            <span className="text-[10px] font-semibold text-slate-400 block uppercase">Total Murid</span>
+            <span className="text-xl font-extrabold text-slate-900">{siswa.length}</span>
             <span className="text-[10px] text-slate-500 block">Murid Aktif</span>
           </div>
         </div>
 
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3.5">
-          <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl">
-            <Users className="w-6 h-6" />
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3">
+          <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl shrink-0">
+            <Users className="w-5 h-5" />
           </div>
           <div>
-            <span className="text-[11px] font-semibold text-slate-400 block uppercase">Total Guru & PTK</span>
-            <span className="text-xl sm:text-2xl font-extrabold text-slate-900">{guru.length}</span>
-            <span className="text-[10px] text-slate-500 block">Pendidik Terdaftar</span>
+            <span className="text-[10px] font-semibold text-slate-400 block uppercase">Guru & PTK</span>
+            <span className="text-xl font-extrabold text-slate-900">{guru.length}</span>
+            <span className="text-[10px] text-slate-500 block">Pendidik</span>
           </div>
         </div>
 
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3.5">
-          <div className="p-3 bg-purple-50 text-purple-600 rounded-2xl">
-            <Layers className="w-6 h-6" />
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3">
+          <div className="p-3 bg-purple-50 text-purple-600 rounded-2xl shrink-0">
+            <Layers className="w-5 h-5" />
           </div>
           <div>
-            <span className="text-[11px] font-semibold text-slate-400 block uppercase">Rombel / Kelas</span>
-            <span className="text-xl sm:text-2xl font-extrabold text-slate-900">{rombel.length}</span>
-            <span className="text-[10px] text-slate-500 block">Rombongan Belajar</span>
+            <span className="text-[10px] font-semibold text-slate-400 block uppercase">Rombel</span>
+            <span className="text-xl font-extrabold text-slate-900">{rombel.length}</span>
+            <span className="text-[10px] text-slate-500 block">Kelas Aktif</span>
           </div>
         </div>
 
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3.5">
-          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl">
-            <BookOpen className="w-6 h-6" />
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3">
+          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl shrink-0">
+            <BookOpen className="w-5 h-5" />
           </div>
           <div>
-            <span className="text-[11px] font-semibold text-slate-400 block uppercase">Mata Pelajaran</span>
-            <span className="text-xl sm:text-2xl font-extrabold text-slate-900">{mapel.length}</span>
-            <span className="text-[10px] text-slate-500 block">Struktur Kurikulum</span>
+            <span className="text-[10px] font-semibold text-slate-400 block uppercase">Mata Pelajaran</span>
+            <span className="text-xl font-extrabold text-slate-900">{mapel.length}</span>
+            <span className="text-[10px] text-slate-500 block">Kurikulum</span>
           </div>
         </div>
       </div>

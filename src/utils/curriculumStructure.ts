@@ -1,4 +1,4 @@
-import { MataPelajaran, Rombel, Siswa } from '../types';
+import { MataPelajaran, Rombel, Siswa, NilaiSiswa } from '../types';
 
 export interface GroupedSubjectItem {
   no: number;
@@ -167,6 +167,14 @@ export function getCurriculumGroupsForRombel(
       if (m) return m.id;
     }
     if (clean.includes('konsentrasi keahlian')) {
+      if (isTSM) {
+        const m = masterMapel.find(x => x.id === 'mapel-kk-tsm' || x.kode === 'KK-TSM');
+        if (m) return m.id;
+      }
+      if (isDKV) {
+        const m = masterMapel.find(x => x.id === 'mapel-kk-dkv' || x.kode === 'KK-DKV');
+        if (m) return m.id;
+      }
       const m = masterMapel.find(x => x.kode.startsWith('KK') || x.nama.toLowerCase().includes('konsentrasi'));
       if (m) return m.id;
     }
@@ -243,4 +251,87 @@ export function getCurriculumGroupsForRombel(
   ];
 
   return groups;
+}
+
+/**
+ * Mencari nilai murid secara cerdas dan sinkron antara input nilai guru dan cetak rapor
+ */
+export function findStudentScore(
+  nilaiSiswa: NilaiSiswa[],
+  siswaId: string,
+  _rombelId: string,
+  item: GroupedSubjectItem,
+  allMapel: MataPelajaran[]
+): NilaiSiswa | undefined {
+  const studentScores = nilaiSiswa.filter(n => n.siswaId === siswaId);
+  if (studentScores.length === 0) return undefined;
+
+  // 1. Cek langsung kecocokan matchedMapelId
+  if (item.matchedMapelId) {
+    const direct = studentScores.find(n => n.mapelId === item.matchedMapelId);
+    if (direct) return direct;
+  }
+
+  const cleanItemName = item.nama.toLowerCase().trim();
+
+  // 2. Pencocokan cerdas berdasarkan nama mapel atau alias kurikulum
+  for (const score of studentScores) {
+    const m = allMapel.find(x => x.id === score.mapelId);
+    if (!m) continue;
+    const cleanMasterName = m.nama.toLowerCase().trim();
+
+    // Kecocokan nama persis
+    if (cleanMasterName === cleanItemName) return score;
+
+    // Kecocokan Pendidikan Agama
+    if (cleanItemName.includes('agama') && (cleanMasterName.includes('agama') || m.kode === 'PABP')) {
+      return score;
+    }
+
+    // Kecocokan Konsentrasi Keahlian
+    if ((cleanItemName.includes('konsentrasi') || cleanItemName === 'konsentrasi keahlian') &&
+        (cleanMasterName.includes('konsentrasi') || m.kode.startsWith('KK') || score.mapelId.startsWith('mapel-kk'))) {
+      return score;
+    }
+
+    // Kecocokan Dasar-dasar Program Keahlian (DDPK)
+    if ((cleanItemName.includes('dasar') || cleanItemName.includes('ddpk')) &&
+        (cleanMasterName.includes('dasar') || m.kode === 'DDPK' || score.mapelId === 'mapel-ddpk')) {
+      return score;
+    }
+
+    // Kecocokan PKK / Kewirausahaan
+    if ((cleanItemName.includes('kewirausahaan') || cleanItemName.includes('kreativitas')) &&
+        (cleanMasterName.includes('kreatif') || cleanMasterName.includes('kewirausahaan') || m.kode === 'PKK' || score.mapelId === 'mapel-pkk')) {
+      return score;
+    }
+
+    // Kecocokan AI / Koding
+    if ((cleanItemName.includes('koding') || cleanItemName.includes('kecerdasan artifisial')) &&
+        (cleanMasterName.includes('koding') || cleanMasterName.includes('kecerdasan') || m.kode === 'AI' || score.mapelId === 'mapel-ai')) {
+      return score;
+    }
+
+    // Kecocokan Pengelasan
+    if (cleanItemName.includes('pengelasan') && (cleanMasterName.includes('las') || m.kode === 'LAS' || score.mapelId === 'mapel-las')) {
+      return score;
+    }
+
+    // Kecocokan Microsoft Office
+    if (cleanItemName.includes('office') && (cleanMasterName.includes('office') || m.kode === 'MSO' || score.mapelId === 'mapel-mso')) {
+      return score;
+    }
+
+    // Kecocokan Layanan Perbankan Syariah
+    if (cleanItemName.includes('perbankan') && (cleanMasterName.includes('perbankan') || m.kode === 'LPS' || score.mapelId === 'mapel-lps')) {
+      return score;
+    }
+
+    // Kecocokan substring
+    if (cleanItemName.includes(cleanMasterName) || cleanMasterName.includes(cleanItemName)) {
+      return score;
+    }
+  }
+
+  return undefined;
 }

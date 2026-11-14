@@ -35,6 +35,19 @@ import {
 } from '../data/defaultData';
 import { generateDeskripsiCapaian } from '../utils/narrativeEngine';
 
+export interface UserSession {
+  id: string; // 'admin' atau guru.id
+  username: string;
+  nama: string;
+  role: 'admin' | 'guru' | 'wali_kelas';
+  guruId?: string;
+  nip?: string;
+  rombelWaliId?: string; // ID kelas yang diwali jika wali kelas
+  namaRombelWali?: string;
+  isPembinaEkskul?: boolean;
+  namaEkskul?: string;
+}
+
 interface AppContextType {
   schoolProfile: SchoolProfile;
   jurusan: Jurusan[];
@@ -51,6 +64,12 @@ interface AppContextType {
   ekskul: Ekstrakurikuler[];
   anggotaEkskul: AnggotaEkskul[];
 
+  // User Auth & Session
+  currentUser: UserSession | null;
+  login: (username: string, password?: string) => boolean;
+  loginAsDemo: (userId: string) => void;
+  logout: () => void;
+
   // Navigation & Role states
   activeRole: UserRole;
   setActiveRole: (role: UserRole) => void;
@@ -64,6 +83,11 @@ interface AppContextType {
   // Actions Profil & Jenjang
   updateSchoolProfile: (profile: Partial<SchoolProfile>) => void;
   switchJenjang: (level: SchoolLevel) => void;
+
+  // CRUD JURUSAN
+  addJurusan: (item: Omit<Jurusan, 'id'>) => void;
+  updateJurusan: (item: Jurusan) => void;
+  deleteJurusan: (id: string) => void;
 
   // CRUD SISWA
   addSiswa: (item: Omit<Siswa, 'id'>) => void;
@@ -182,10 +206,137 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : defaultAnggotaEkskul;
   });
 
-  const [activeRole, setActiveRole] = useState<UserRole>('guru');
+  const [currentUser, setCurrentUser] = useState<UserSession | null>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_user_session`);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        // ignore
+      }
+    }
+    // Default session awal: Admin
+    return {
+      id: 'admin',
+      username: 'admin',
+      nama: 'Administrator Sistem',
+      role: 'admin',
+    };
+  });
+
+  const [activeRole, setActiveRole] = useState<UserRole>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_user_session`);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.role || 'admin';
+      } catch (e) {}
+    }
+    return 'admin';
+  });
   const [currentGuruId, setCurrentGuruId] = useState<string>('guru-1');
   const [selectedRombelId, setSelectedRombelId] = useState<string>('rombel-xii-tsm-1');
   const [selectedMapelId, setSelectedMapelId] = useState<string>('mapel-kk-tsm');
+
+  const login = (usernameInput: string, _passwordInput?: string): boolean => {
+    const trimmed = usernameInput.trim().toLowerCase();
+    if (trimmed === 'admin' || trimmed === 'administrator') {
+      const sess: UserSession = {
+        id: 'admin',
+        username: 'admin',
+        nama: 'Administrator Sistem',
+        role: 'admin',
+      };
+      setCurrentUser(sess);
+      setActiveRole('admin');
+      localStorage.setItem(`${STORAGE_KEY}_user_session`, JSON.stringify(sess));
+      return true;
+    }
+
+    const foundGuru = guru.find(g => 
+      (g.nip && g.nip.toLowerCase() === trimmed) ||
+      g.nama.toLowerCase().includes(trimmed) ||
+      g.email.toLowerCase().includes(trimmed)
+    );
+
+    if (foundGuru) {
+      const waliRombel = rombel.find(r => r.waliKelasId === foundGuru.id);
+      const pembinaEks = ekskul.find(e => e.pembinaGuruId === foundGuru.id);
+      const isWali = !!waliRombel;
+
+      const sess: UserSession = {
+        id: foundGuru.id,
+        username: foundGuru.nip || foundGuru.email.split('@')[0],
+        nama: `${foundGuru.gelarDepan ? foundGuru.gelarDepan + ' ' : ''}${foundGuru.nama}${foundGuru.gelarBelakang ? ', ' + foundGuru.gelarBelakang : ''}`,
+        role: isWali ? 'wali_kelas' : 'guru',
+        guruId: foundGuru.id,
+        nip: foundGuru.nip,
+        rombelWaliId: waliRombel?.id,
+        namaRombelWali: waliRombel?.nama,
+        isPembinaEkskul: !!pembinaEks,
+        namaEkskul: pembinaEks?.nama
+      };
+
+      setCurrentUser(sess);
+      setActiveRole(isWali ? 'wali_kelas' : 'guru');
+      setCurrentGuruId(foundGuru.id);
+      if (waliRombel) {
+        setSelectedRombelId(waliRombel.id);
+      }
+      localStorage.setItem(`${STORAGE_KEY}_user_session`, JSON.stringify(sess));
+      return true;
+    }
+
+    return false;
+  };
+
+  const loginAsDemo = (userId: string) => {
+    if (userId === 'admin') {
+      const sess: UserSession = {
+        id: 'admin',
+        username: 'admin',
+        nama: 'Administrator Sistem',
+        role: 'admin',
+      };
+      setCurrentUser(sess);
+      setActiveRole('admin');
+      localStorage.setItem(`${STORAGE_KEY}_user_session`, JSON.stringify(sess));
+      return;
+    }
+
+    const targetGuru = guru.find(g => g.id === userId);
+    if (!targetGuru) return;
+
+    const waliRombel = rombel.find(r => r.waliKelasId === targetGuru.id);
+    const pembinaEks = ekskul.find(e => e.pembinaGuruId === targetGuru.id);
+    const isWali = !!waliRombel;
+
+    const sess: UserSession = {
+      id: targetGuru.id,
+      username: targetGuru.nip || targetGuru.email.split('@')[0],
+      nama: `${targetGuru.gelarDepan ? targetGuru.gelarDepan + ' ' : ''}${targetGuru.nama}${targetGuru.gelarBelakang ? ', ' + targetGuru.gelarBelakang : ''}`,
+      role: isWali ? 'wali_kelas' : 'guru',
+      guruId: targetGuru.id,
+      nip: targetGuru.nip,
+      rombelWaliId: waliRombel?.id,
+      namaRombelWali: waliRombel?.nama,
+      isPembinaEkskul: !!pembinaEks,
+      namaEkskul: pembinaEks?.nama
+    };
+
+    setCurrentUser(sess);
+    setActiveRole(isWali ? 'wali_kelas' : 'guru');
+    setCurrentGuruId(targetGuru.id);
+    if (waliRombel) {
+      setSelectedRombelId(waliRombel.id);
+    }
+    localStorage.setItem(`${STORAGE_KEY}_user_session`, JSON.stringify(sess));
+  };
+
+  const logout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem(`${STORAGE_KEY}_user_session`);
+  };
 
   // Sync to localStorage
   useEffect(() => {
@@ -221,6 +372,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ? 'SMPN 1 LABUHAN MARINGGAI'
         : 'SDN 1 KARANG ANYAR'
     }));
+  };
+
+  // CRUD JURUSAN
+  const addJurusan = (item: Omit<Jurusan, 'id'>) => {
+    const newItem: Jurusan = { ...item, id: `jurusan-${Date.now()}` };
+    setJurusan(prev => [...prev, newItem]);
+  };
+
+  const updateJurusan = (item: Jurusan) => {
+    setJurusan(prev => prev.map(j => j.id === item.id ? item : j));
+  };
+
+  const deleteJurusan = (id: string) => {
+    setJurusan(prev => prev.filter(j => j.id !== id));
   };
 
   // CRUD SISWA
@@ -484,6 +649,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         nilaiUKK,
         ekskul,
         anggotaEkskul,
+        currentUser,
+        login,
+        loginAsDemo,
+        logout,
         activeRole,
         setActiveRole,
         currentGuruId,
@@ -494,6 +663,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSelectedMapelId,
         updateSchoolProfile,
         switchJenjang,
+        addJurusan,
+        updateJurusan,
+        deleteJurusan,
         addSiswa,
         updateSiswa,
         deleteSiswa,

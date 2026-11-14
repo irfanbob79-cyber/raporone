@@ -11,6 +11,8 @@ export const KehadiranView: React.FC = () => {
     siswa,
     kehadiran,
     nilaiSiswa,
+    activeRole,
+    currentUser,
     selectedRombelId,
     setSelectedRombelId,
     saveBatchKehadiran
@@ -19,8 +21,28 @@ export const KehadiranView: React.FC = () => {
   const [draftKehadiran, setDraftKehadiran] = useState<Record<string, Kehadiran>>({});
   const [saveStatus, setSaveStatus] = useState('');
 
-  const currentRombel = rombel.find(r => r.id === selectedRombelId) || rombel[0];
+  const isWali = activeRole === 'wali_kelas';
+  const availableRombel = isWali && currentUser?.rombelWaliId
+    ? rombel.filter(r => r.id === currentUser.rombelWaliId)
+    : rombel;
+
+  const activeRombelId = availableRombel.some(r => r.id === selectedRombelId)
+    ? selectedRombelId
+    : availableRombel[0]?.id || rombel[0]?.id;
+
+  const currentRombel = rombel.find(r => r.id === activeRombelId) || rombel[0];
   const currentSiswa = siswa.filter(s => s.rombelId === currentRombel?.id);
+
+  // Auto-sync debounced save
+  useEffect(() => {
+    const list = Object.values(draftKehadiran);
+    if (list.length > 0) {
+      const timer = setTimeout(() => {
+        saveBatchKehadiran(list);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [draftKehadiran]);
 
   useEffect(() => {
     if (!currentRombel) return;
@@ -169,11 +191,11 @@ export const KehadiranView: React.FC = () => {
 
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
           <select
-            value={selectedRombelId}
+            value={activeRombelId}
             onChange={(e) => setSelectedRombelId(e.target.value)}
             className="bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           >
-            {rombel.map(r => (
+            {availableRombel.map(r => (
               <option key={r.id} value={r.id}>{r.nama}</option>
             ))}
           </select>

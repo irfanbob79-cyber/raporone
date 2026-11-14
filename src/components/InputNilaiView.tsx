@@ -26,6 +26,7 @@ export const InputNilaiView: React.FC = () => {
     tujuanPembelajaran,
     nilaiSiswa,
     activeRole,
+    currentUser,
     currentGuruId,
     setCurrentGuruId,
     selectedRombelId,
@@ -43,13 +44,18 @@ export const InputNilaiView: React.FC = () => {
   // Local draft state for quick editing
   const [draftNilai, setDraftNilai] = useState<Record<string, NilaiSiswa>>({});
 
-  // 1. FILTER HANYA KELAS DAN MAPEL YANG DIAMPU GURU
-  const isGuruRole = activeRole === 'guru';
-  const currentGuru = guru.find(g => g.id === currentGuruId) || guru[0];
+  // 1. FILTER HANYA KELAS DAN MAPEL YANG DIAMPU GURU / WALI KELAS (Admin bisa semua)
+  const isTeacherRestricted = activeRole === 'guru' || activeRole === 'wali_kelas';
+  const effectiveGuruId = currentUser?.guruId || currentGuruId || guru[0]?.id;
+  const currentGuru = guru.find(g => g.id === effectiveGuruId) || guru[0];
+  const isGuruRole = isTeacherRestricted;
 
-  // List rombel yang diampu guru ini (atau semua jika admin/waka)
-  const availableRombel = isGuruRole
-    ? rombel.filter(r => pembelajaran.some(p => p.guruId === currentGuru.id && p.rombelId === r.id))
+  // List rombel yang diampu guru ini (atau semua jika admin)
+  const availableRombel = isTeacherRestricted
+    ? rombel.filter(r => 
+        pembelajaran.some(p => p.guruId === currentGuru.id && p.rombelId === r.id) ||
+        (activeRole === 'wali_kelas' && r.waliKelasId === currentGuru.id)
+      )
     : rombel;
 
   // Selected rombel fallback
@@ -60,7 +66,7 @@ export const InputNilaiView: React.FC = () => {
   const currentRombel = rombel.find(r => r.id === activeRombelId) || rombel[0];
 
   // List mapel yang diampu guru ini di rombel yang dipilih
-  const availableMapel = isGuruRole
+  const availableMapel = isTeacherRestricted
     ? mapel.filter(m => pembelajaran.some(p => p.guruId === currentGuru.id && p.rombelId === currentRombel?.id && p.mapelId === m.id))
     : mapel;
 
@@ -120,6 +126,17 @@ export const InputNilaiView: React.FC = () => {
 
     setDraftNilai(initial);
   }, [activeRombelId, activeMapelId, siswa, tujuanPembelajaran]);
+
+  // Otomatis sinkronisasi nilai ke AppContext saat diubah agar cetak rapor selalu ter-update
+  useEffect(() => {
+    const list = Object.values(draftNilai);
+    if (list.length > 0) {
+      const timer = setTimeout(() => {
+        saveBatchNilai(list);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [draftNilai]);
 
   // Handle score change for TP
   const handleScoreChange = (siswaId: string, tpId: string, value: string) => {

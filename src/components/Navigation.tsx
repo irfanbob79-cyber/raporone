@@ -1,11 +1,14 @@
 import React from 'react';
+import { useApp } from '../context/AppContext';
 import {
   LayoutDashboard,
   Users,
   Edit3,
   CalendarCheck,
   FileText,
-  BookOpenCheck
+  BookOpenCheck,
+  Target,
+  Compass
 } from 'lucide-react';
 
 export type ActiveTab = 'dashboard' | 'master' | 'tp' | 'nilai' | 'kehadiran' | 'ekskul' | 'pkl' | 'ukk' | 'rapor' | 'legger' | 'panduan';
@@ -16,6 +19,10 @@ interface NavigationProps {
 }
 
 export const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab }) => {
+  const { activeRole, currentUser } = useApp();
+  const isAdmin = activeRole === 'admin';
+  const isWali = activeRole === 'wali_kelas';
+
   return (
     /* Mobile Bottom Navigation Bar (Optimized for Smartphones - Hidden on desktop) */
     <div className="no-print md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-2 py-1.5 flex items-center justify-around shadow-lg">
@@ -42,25 +49,51 @@ export const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab 
         <span>Nilai</span>
       </button>
 
-      <button
-        onClick={() => setActiveTab('kehadiran')}
-        className={`flex flex-col items-center justify-center p-1 rounded-lg text-[10px] font-medium transition ${
-          activeTab === 'kehadiran' ? 'text-blue-600 font-bold' : 'text-slate-500'
-        }`}
-      >
-        <CalendarCheck className="w-5 h-5 mb-0.5" />
-        <span>Absensi</span>
-      </button>
+      {(isAdmin || isWali) ? (
+        <button
+          onClick={() => setActiveTab('kehadiran')}
+          className={`flex flex-col items-center justify-center p-1 rounded-lg text-[10px] font-medium transition ${
+            activeTab === 'kehadiran' ? 'text-blue-600 font-bold' : 'text-slate-500'
+          }`}
+        >
+          <CalendarCheck className="w-5 h-5 mb-0.5" />
+          <span>Absensi</span>
+        </button>
+      ) : (
+        <button
+          onClick={() => setActiveTab('tp')}
+          className={`flex flex-col items-center justify-center p-1 rounded-lg text-[10px] font-medium transition ${
+            activeTab === 'tp' ? 'text-blue-600 font-bold' : 'text-slate-500'
+          }`}
+        >
+          <Target className="w-5 h-5 mb-0.5" />
+          <span>TP</span>
+        </button>
+      )}
 
-      <button
-        onClick={() => setActiveTab('rapor')}
-        className={`flex flex-col items-center justify-center p-1 rounded-lg text-[10px] font-medium transition ${
-          activeTab === 'rapor' ? 'text-blue-600 font-bold' : 'text-slate-500'
-        }`}
-      >
-        <FileText className="w-5 h-5 mb-0.5" />
-        <span>Cetak</span>
-      </button>
+      {(isAdmin || isWali) && (
+        <button
+          onClick={() => setActiveTab('rapor')}
+          className={`flex flex-col items-center justify-center p-1 rounded-lg text-[10px] font-medium transition ${
+            activeTab === 'rapor' ? 'text-blue-600 font-bold' : 'text-slate-500'
+          }`}
+        >
+          <FileText className="w-5 h-5 mb-0.5" />
+          <span>Cetak</span>
+        </button>
+      )}
+
+      {currentUser?.isPembinaEkskul && !isAdmin && !isWali && (
+        <button
+          onClick={() => setActiveTab('ekskul')}
+          className={`flex flex-col items-center justify-center p-1 rounded-lg text-[10px] font-medium transition ${
+            activeTab === 'ekskul' ? 'text-blue-600 font-bold' : 'text-slate-500'
+          }`}
+        >
+          <Compass className="w-5 h-5 mb-0.5" />
+          <span>Ekskul</span>
+        </button>
+      )}
 
       <button
         onClick={() => setActiveTab('panduan')}

@@ -13,6 +13,7 @@ import { PKLUKKView } from './components/PKLUKKView';
 import { CetakRaporView } from './components/CetakRaporView';
 import { LeggerView } from './components/LeggerView';
 import { PanduanGuruView } from './components/PanduanGuruView';
+import { LoginView } from './components/LoginView';
 import { SchoolSettingsModal } from './components/SchoolSettingsModal';
 import { ImportExcelModal } from './components/ImportExcelModal';
 
@@ -22,7 +23,11 @@ const MainLayout: React.FC = () => {
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  const { schoolProfile } = useApp();
+  const { schoolProfile, currentUser } = useApp();
+
+  if (!currentUser) {
+    return <LoginView />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">

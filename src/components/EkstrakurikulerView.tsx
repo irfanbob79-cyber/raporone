@@ -21,6 +21,8 @@ export const EkstrakurikulerView: React.FC = () => {
     siswa,
     guru,
     rombel,
+    activeRole,
+    currentUser,
     addEkstrakurikuler,
     updateEkstrakurikuler,
     deleteEkstrakurikuler,
@@ -30,7 +32,13 @@ export const EkstrakurikulerView: React.FC = () => {
   } = useApp();
 
   const [activeSubTab, setActiveSubTab] = useState<'anggota' | 'master'>('anggota');
-  const [selectedEkskulId, setSelectedEkskulId] = useState<string>(ekskul[0]?.id || '');
+  const [selectedEkskulId, setSelectedEkskulId] = useState<string>(() => {
+    if (currentUser?.guruId) {
+      const myEks = ekskul.find(e => e.pembinaGuruId === currentUser.guruId);
+      if (myEks) return myEks.id;
+    }
+    return ekskul[0]?.id || '';
+  });
   const [saveStatus, setSaveStatus] = useState('');
 
   // Modal State for Master Ekskul
@@ -172,17 +180,19 @@ export const EkstrakurikulerView: React.FC = () => {
               <span>Input Nilai Anggota</span>
             </button>
 
-            <button
-              onClick={() => setActiveSubTab('master')}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition ${
-                activeSubTab === 'master'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              <Compass className="w-4 h-4" />
-              <span>Master Ekskul ({ekskul.length})</span>
-            </button>
+            {activeRole === 'admin' && (
+              <button
+                onClick={() => setActiveSubTab('master')}
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition ${
+                  activeSubTab === 'master'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                <Compass className="w-4 h-4" />
+                <span>Master Ekskul ({ekskul.length})</span>
+              </button>
+            )}
           </div>
         </div>
 

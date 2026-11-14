@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Printer, ChevronLeft, ChevronRight, ShieldAlert, CheckCircle2, UserCheck, Eye, EyeOff } from 'lucide-react';
-import { getCurriculumGroupsForRombel, getPredikatPKL } from '../utils/curriculumStructure';
+import { getCurriculumGroupsForRombel, getPredikatPKL, findStudentScore } from '../utils/curriculumStructure';
 
 export const CetakRaporView: React.FC = () => {
   const {
@@ -17,14 +17,24 @@ export const CetakRaporView: React.FC = () => {
     ekskul,
     anggotaEkskul,
     activeRole,
+    currentUser,
     setActiveRole,
     selectedRombelId,
     setSelectedRombelId
   } = useApp();
 
-  const isWaliKelas = activeRole === 'wali_kelas';
+  const isAdmin = activeRole === 'admin';
+  const isWaliKelas = activeRole === 'wali_kelas' || isAdmin;
 
-  const currentRombel = rombel.find(r => r.id === selectedRombelId) || rombel[0];
+  const availableRombel = (activeRole === 'wali_kelas' && currentUser?.rombelWaliId)
+    ? rombel.filter(r => r.id === currentUser.rombelWaliId)
+    : rombel;
+
+  const activeRombelId = availableRombel.some(r => r.id === selectedRombelId)
+    ? selectedRombelId
+    : availableRombel[0]?.id || rombel[0]?.id;
+
+  const currentRombel = rombel.find(r => r.id === activeRombelId) || rombel[0];
   const currentSiswaList = siswa.filter(s => s.rombelId === currentRombel?.id);
   const waliKelas = guru.find(g => g.id === currentRombel?.waliKelasId);
   const currentJurusan = currentRombel?.jurusanId ? jurusan.find(j => j.id === currentRombel.jurusanId) : undefined;
@@ -54,46 +64,48 @@ export const CetakRaporView: React.FC = () => {
 
   return (
     <div className="space-y-4 pb-20">
-      {/* 1. HAK AKSES: HANYA WALI KELAS YANG BISA CETAK RAPOR */}
-      {!isWaliKelas ? (
+      {/* 1. HAK AKSES: WALI KELAS & ADMIN BISA CETAK RAPOR */}
+      {isAdmin ? (
+        <div className="no-print bg-purple-50 border border-purple-200 rounded-2xl p-3.5 flex items-center justify-between gap-3 text-xs text-purple-900">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-purple-600 shrink-0" />
+            <span>
+              Anda login sebagai <strong>Administrator Sistem</strong>. Seluruh fitur cetak rapor untuk semua rombel terbuka penuh.
+            </span>
+          </div>
+          <span className="hidden sm:inline text-[10px] font-bold bg-purple-200 text-purple-800 px-2 py-0.5 rounded">
+            Hak Akses: Administrator
+          </span>
+        </div>
+      ) : isWaliKelas ? (
+        /* Status Banner for Wali Kelas */
+        <div className="no-print bg-blue-50 border border-blue-200 rounded-2xl p-3.5 flex items-center justify-between gap-3 text-xs text-blue-900">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
+            <span>
+              Anda terverifikasi sebagai <strong>Wali Kelas ({currentUser?.nama || waliKelas?.nama})</strong>. Hak cetak rapor untuk kelas Anda aktif.
+            </span>
+          </div>
+          <span className="hidden sm:inline text-[10px] font-bold bg-blue-200 text-blue-800 px-2 py-0.5 rounded">
+            Hak Akses: Valid
+          </span>
+        </div>
+      ) : (
         <div className="no-print bg-amber-50 border-2 border-amber-300 rounded-3xl p-6 sm:p-8 text-center space-y-4 shadow-sm animate-fadeIn">
           <div className="w-14 h-14 bg-amber-100 text-amber-700 rounded-2xl flex items-center justify-center mx-auto shadow-sm">
             <ShieldAlert className="w-8 h-8" />
           </div>
           <div className="max-w-md mx-auto space-y-1.5">
             <h3 className="text-lg font-extrabold text-amber-900">
-              Akses Dibatasi: Khusus Wali Kelas
+              Akses Dibatasi: Khusus Wali Kelas & Admin
             </h3>
             <p className="text-xs sm:text-sm text-amber-800 leading-relaxed">
-              Berdasarkan tata kelola Kurikulum Merdeka, <strong>hanya Wali Kelas</strong> yang memiliki wewenang untuk mencetak dokumen Rapor Resmi murid.
+              Berdasarkan tata kelola Kurikulum Merdeka, <strong>hanya Wali Kelas atau Administrator</strong> yang memiliki wewenang untuk mencetak dokumen Rapor Resmi murid.
             </p>
             <p className="text-xs text-amber-700/90 font-medium">
               Saat ini Anda masuk dengan peran: <span className="font-bold underline uppercase">{activeRole}</span>
             </p>
           </div>
-
-          <div className="pt-2">
-            <button
-              onClick={() => setActiveRole('wali_kelas')}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 transition active:scale-95"
-            >
-              <UserCheck className="w-4 h-4" />
-              Beralih ke Peran Wali Kelas
-            </button>
-          </div>
-        </div>
-      ) : (
-        /* Status Banner for Wali Kelas */
-        <div className="no-print bg-blue-50 border border-blue-200 rounded-2xl p-3.5 flex items-center justify-between gap-3 text-xs text-blue-900">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
-            <span>
-              Anda terverifikasi sebagai <strong>Wali Kelas ({waliKelas ? waliKelas.nama : 'Bambang Irawan'})</strong>. Hak cetak rapor aktif.
-            </span>
-          </div>
-          <span className="hidden sm:inline text-[10px] font-bold bg-blue-200 text-blue-800 px-2 py-0.5 rounded">
-            Hak Akses: Valid
-          </span>
         </div>
       )}
 
@@ -106,14 +118,14 @@ export const CetakRaporView: React.FC = () => {
               Rombel / Kelas
             </label>
             <select
-              value={selectedRombelId}
+              value={activeRombelId}
               onChange={(e) => {
                 setSelectedRombelId(e.target.value);
                 setActiveStudentIndex(0);
               }}
               className="bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             >
-              {rombel.map(r => (
+              {availableRombel.map(r => (
                 <option key={r.id} value={r.id}>{r.nama}</option>
               ))}
             </select>
@@ -251,16 +263,7 @@ export const CetakRaporView: React.FC = () => {
                         </td>
                       </tr>
                       {group.items.map((item) => {
-                        const matchedMapel = item.matchedMapelId
-                          ? mapel.find(m => m.id === item.matchedMapelId)
-                          : mapel.find(m => m.nama.toLowerCase() === item.nama.toLowerCase());
-
-                        const nilai = nilaiSiswa.find(
-                          n => n.siswaId === activeSiswa.id && (
-                            (item.matchedMapelId && n.mapelId === item.matchedMapelId) ||
-                            (matchedMapel && n.mapelId === matchedMapel.id)
-                          )
-                        );
+                        const nilai = findStudentScore(nilaiSiswa, activeSiswa.id, currentRombel.id, item, mapel);
 
                         return (
                           <tr key={group.groupTitle + item.nama + item.no} className="align-top border-b border-black">

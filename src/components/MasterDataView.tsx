@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Siswa, Guru, Rombel, MataPelajaran, KelompokMapel } from '../types';
+import { Siswa, Guru, Rombel, MataPelajaran, KelompokMapel, Jurusan } from '../types';
 import {
   Users,
   GraduationCap,
@@ -13,7 +13,8 @@ import {
   Edit2,
   Trash2,
   X,
-  Check
+  Check,
+  Compass
 } from 'lucide-react';
 import { downloadTemplateSiswa, downloadTemplateGuru } from '../utils/excel';
 
@@ -25,6 +26,9 @@ export const MasterDataView: React.FC<{ onOpenImport: () => void }> = ({ onOpenI
     mapel,
     jurusan,
     schoolProfile,
+    addJurusan,
+    updateJurusan,
+    deleteJurusan,
     addSiswa,
     updateSiswa,
     deleteSiswa,
@@ -39,14 +43,15 @@ export const MasterDataView: React.FC<{ onOpenImport: () => void }> = ({ onOpenI
     deleteMapel
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'siswa' | 'guru' | 'rombel' | 'mapel'>('siswa');
+  const [activeTab, setActiveTab] = useState<'siswa' | 'guru' | 'rombel' | 'mapel' | 'jurusan'>('siswa');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Modal states for CRUD
-  const [modalType, setModalType] = useState<'siswa' | 'guru' | 'rombel' | 'mapel' | null>(null);
+  const [modalType, setModalType] = useState<'siswa' | 'guru' | 'rombel' | 'mapel' | 'jurusan' | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
   // Form states
+  const [jurusanForm, setJurusanForm] = useState<Partial<Jurusan>>({});
   const [siswaForm, setSiswaForm] = useState<Partial<Siswa>>({});
   const [guruForm, setGuruForm] = useState<Partial<Guru>>({});
   const [rombelForm, setRombelForm] = useState<Partial<Rombel>>({});
@@ -197,6 +202,36 @@ export const MasterDataView: React.FC<{ onOpenImport: () => void }> = ({ onOpenI
     setModalType(null);
   };
 
+  // Handler Buka Form Jurusan
+  const handleOpenAddJurusan = () => {
+    setIsEditing(false);
+    setJurusanForm({
+      kode: '',
+      nama: '',
+      bidangKeahlian: 'Teknologi Manufaktur dan Rekayasa',
+      programKeahlian: ''
+    });
+    setModalType('jurusan');
+  };
+
+  const handleOpenEditJurusan = (item: Jurusan) => {
+    setIsEditing(true);
+    setJurusanForm({ ...item });
+    setModalType('jurusan');
+  };
+
+  const handleSaveJurusan = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!jurusanForm.nama || !jurusanForm.kode) return;
+
+    if (isEditing && jurusanForm.id) {
+      updateJurusan(jurusanForm as Jurusan);
+    } else {
+      addJurusan(jurusanForm as Omit<Jurusan, 'id'>);
+    }
+    setModalType(null);
+  };
+
   return (
     <div className="space-y-4 pb-20">
       {/* Top Banner & Tabs */}
@@ -205,11 +240,21 @@ export const MasterDataView: React.FC<{ onOpenImport: () => void }> = ({ onOpenI
           <div>
             <h3 className="font-bold text-slate-800 text-base">Manajemen Data Master (CRUD)</h3>
             <p className="text-xs text-slate-500">
-              Tambah, lihat, edit, dan hapus data Siswa, Guru, Rombel, dan Mata Pelajaran
+              Tambah, lihat, edit, dan hapus data Jurusan, Siswa, Guru, Rombel, dan Mata Pelajaran
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+            {activeTab === 'jurusan' && (
+              <button
+                onClick={handleOpenAddJurusan}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition active:scale-95"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Tambah Jurusan</span>
+              </button>
+            )}
+
             {activeTab === 'siswa' && (
               <button
                 onClick={handleOpenAddSiswa}
@@ -305,6 +350,15 @@ export const MasterDataView: React.FC<{ onOpenImport: () => void }> = ({ onOpenI
           >
             <Briefcase className="w-4 h-4" />
             Mata Pelajaran ({mapel.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('jurusan')}
+            className={`flex items-center gap-2 pb-2.5 text-xs font-bold border-b-2 transition whitespace-nowrap ${
+              activeTab === 'jurusan' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500'
+            }`}
+          >
+            <Compass className="w-4 h-4" />
+            Jurusan & Konsentrasi ({jurusan.length})
           </button>
         </div>
 
@@ -550,6 +604,65 @@ export const MasterDataView: React.FC<{ onOpenImport: () => void }> = ({ onOpenI
                     </td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 5: JURUSAN */}
+      {activeTab === 'jurusan' && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+                <tr>
+                  <th className="p-3 w-10 text-center">No</th>
+                  <th className="p-3 w-28">Kode Jurusan</th>
+                  <th className="p-3">Konsentrasi Keahlian (Jurusan)</th>
+                  <th className="p-3">Program Keahlian</th>
+                  <th className="p-3">Bidang Keahlian</th>
+                  <th className="p-3 w-20 text-center">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {jurusan
+                  .filter(j =>
+                    j.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    j.kode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    (j.programKeahlian && j.programKeahlian.toLowerCase().includes(searchQuery.toLowerCase()))
+                  )
+                  .map((j, idx) => (
+                    <tr key={j.id} className="hover:bg-slate-50">
+                      <td className="p-3 text-center text-slate-400">{idx + 1}</td>
+                      <td className="p-3 font-mono font-bold text-blue-700">{j.kode}</td>
+                      <td className="p-3 font-bold text-slate-800">{j.nama}</td>
+                      <td className="p-3 font-medium text-slate-600">{j.programKeahlian || '-'}</td>
+                      <td className="p-3 text-slate-500">{j.bidangKeahlian || '-'}</td>
+                      <td className="p-3 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => handleOpenEditJurusan(j)}
+                            className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-slate-100"
+                            title="Edit Jurusan"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm(`Hapus jurusan ${j.nama} (${j.kode})?`)) {
+                                deleteJurusan(j.id);
+                              }
+                            }}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50"
+                            title="Hapus Jurusan"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
               </tbody>
             </table>
           </div>
@@ -955,6 +1068,82 @@ export const MasterDataView: React.FC<{ onOpenImport: () => void }> = ({ onOpenI
                   className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-sm"
                 >
                   Simpan Mapel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL CRUD JURUSAN */}
+      {modalType === 'jurusan' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+            <h3 className="font-bold text-slate-800 text-base">
+              {isEditing ? 'Edit Jurusan / Konsentrasi' : 'Tambah Jurusan / Konsentrasi Baru'}
+            </h3>
+            <form onSubmit={handleSaveJurusan} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-semibold mb-1">Kode Jurusan</label>
+                <input
+                  type="text"
+                  value={jurusanForm.kode || ''}
+                  onChange={(e) => setJurusanForm({ ...jurusanForm, kode: e.target.value.toUpperCase() })}
+                  placeholder="Contoh: TSM, DKV, AKL, PBS"
+                  className="w-full p-2 border rounded-lg font-mono font-bold uppercase"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1">Konsentrasi Keahlian (Nama Jurusan)</label>
+                <input
+                  type="text"
+                  value={jurusanForm.nama || ''}
+                  onChange={(e) => setJurusanForm({ ...jurusanForm, nama: e.target.value })}
+                  placeholder="Contoh: Teknik Sepeda Motor"
+                  className="w-full p-2 border rounded-lg font-bold"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1">Program Keahlian</label>
+                <input
+                  type="text"
+                  value={jurusanForm.programKeahlian || ''}
+                  onChange={(e) => setJurusanForm({ ...jurusanForm, programKeahlian: e.target.value })}
+                  placeholder="Contoh: Teknik Otomotif"
+                  className="w-full p-2 border rounded-lg font-semibold"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1">Bidang Keahlian</label>
+                <input
+                  type="text"
+                  value={jurusanForm.bidangKeahlian || ''}
+                  onChange={(e) => setJurusanForm({ ...jurusanForm, bidangKeahlian: e.target.value })}
+                  placeholder="Contoh: Teknologi Manufaktur dan Rekayasa"
+                  className="w-full p-2 border rounded-lg font-semibold"
+                  required
+                />
+              </div>
+
+              <div className="pt-3 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setModalType(null)}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-semibold"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-sm"
+                >
+                  Simpan Jurusan
                 </button>
               </div>
             </form>
