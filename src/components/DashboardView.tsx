@@ -22,7 +22,8 @@ import {
   Award,
   Filter,
   Check,
-  AlertCircle
+  AlertCircle,
+  Briefcase
 } from 'lucide-react';
 
 interface DashboardViewProps {
@@ -48,6 +49,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     kehadiran,
     ekskul,
     anggotaEkskul,
+    nilaiPKL,
+    nilaiUKK,
     activeRole,
     currentUser,
     setSelectedRombelId,
@@ -58,7 +61,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const isAdmin = activeRole === 'admin';
 
   // State Tabs & Filters Progres
-  const [activeProgressTab, setActiveProgressTab] = useState<'nilai' | 'ekskul' | 'absensi'>('nilai');
+  const [activeProgressTab, setActiveProgressTab] = useState<'nilai' | 'ekskul' | 'absensi' | 'pkl' | 'ukk'>('nilai');
   const [filterRombel, setFilterRombel] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
 
@@ -145,6 +148,71 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const totalRombel = rombel.length;
   const selesaiAbsensi = absensiProgressList.filter(a => a.isCompleted).length;
   const overallAbsensiPercent = totalRombel > 0 ? Math.round((selesaiAbsensi / totalRombel) * 100) : 100;
+
+  // 4. Perhitungan Progres Penilaian PKL (Praktik Kerja Lapangan - Khusus Kelas XII)
+  const rombelKelasXII = rombel.filter(r => r.tingkat === 12 || r.nama.startsWith('XII'));
+  const pklProgressList = rombelKelasXII.map(r => {
+    const rSiswa = siswa.filter(s => s.rombelId === r.id);
+    const rPKL = (nilaiPKL || []).filter(p => p.rombelId === r.id && p.nilaiAkhir > 0 && !!p.mitraDudi);
+    const wali = guru.find(g => g.id === r.waliKelasId);
+    const totalSiswa = rSiswa.length;
+    const ratedCount = rPKL.length;
+    const percent = totalSiswa > 0 ? Math.round((ratedCount / totalSiswa) * 100) : 100;
+
+    let status: 'selesai' | 'sebagian' | 'belum' = 'belum';
+    if (ratedCount >= totalSiswa && totalSiswa > 0) status = 'selesai';
+    else if (ratedCount > 0) status = 'sebagian';
+
+    const jur = jurusan.find(j => j.id === r.jurusanId);
+
+    return {
+      id: r.id,
+      nama: r.nama,
+      jurusanNama: jur?.nama || 'Kejuruan SMK',
+      waliNama: wali ? `${wali.nama} ${wali.gelarBelakang || ''}` : 'Belum Ditentukan',
+      totalSiswa,
+      ratedCount,
+      percent,
+      status
+    };
+  });
+
+  const totalSiswaPKL = pklProgressList.reduce((acc, curr) => acc + curr.totalSiswa, 0);
+  const ratedSiswaPKL = pklProgressList.reduce((acc, curr) => acc + curr.ratedCount, 0);
+  const overallPKLPercent = totalSiswaPKL > 0 ? Math.round((ratedSiswaPKL / totalSiswaPKL) * 100) : 100;
+  const selesaiPKLRombel = pklProgressList.filter(p => p.status === 'selesai').length;
+
+  // 5. Perhitungan Progres UKK (Uji Kompetensi Keahlian SMK)
+  const ukkProgressList = rombelKelasXII.map(r => {
+    const rSiswa = siswa.filter(s => s.rombelId === r.id);
+    const rUKK = (nilaiUKK || []).filter(u => u.rombelId === r.id && u.nilaiAkhir > 0 && u.statusKompeten && u.statusKompeten !== 'Belum Kompeten');
+    const wali = guru.find(g => g.id === r.waliKelasId);
+    const totalSiswa = rSiswa.length;
+    const ratedCount = rUKK.length;
+    const percent = totalSiswa > 0 ? Math.round((ratedCount / totalSiswa) * 100) : 100;
+
+    let status: 'selesai' | 'sebagian' | 'belum' = 'belum';
+    if (ratedCount >= totalSiswa && totalSiswa > 0) status = 'selesai';
+    else if (ratedCount > 0) status = 'sebagian';
+
+    const jur = jurusan.find(j => j.id === r.jurusanId);
+
+    return {
+      id: r.id,
+      nama: r.nama,
+      jurusanNama: jur?.nama || 'Kejuruan SMK',
+      waliNama: wali ? `${wali.nama} ${wali.gelarBelakang || ''}` : 'Belum Ditentukan',
+      totalSiswa,
+      ratedCount,
+      percent,
+      status
+    };
+  });
+
+  const totalSiswaUKK = ukkProgressList.reduce((acc, curr) => acc + curr.totalSiswa, 0);
+  const ratedSiswaUKK = ukkProgressList.reduce((acc, curr) => acc + curr.ratedCount, 0);
+  const overallUKKPercent = totalSiswaUKK > 0 ? Math.round((ratedSiswaUKK / totalSiswaUKK) * 100) : 100;
+  const selesaiUKKRombel = ukkProgressList.filter(u => u.status === 'selesai').length;
 
   // Filter list pembelajaran
   const filteredLearningProgress = learningProgressList.filter(item => {
@@ -304,7 +372,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
+          <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
             <button
               onClick={() => setActiveProgressTab('nilai')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
@@ -335,11 +403,35 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             >
               Absensi Wali ({overallAbsensiPercent}%)
             </button>
+            {schoolProfile.jenjang === 'SMK' && (
+              <>
+                <button
+                  onClick={() => setActiveProgressTab('pkl')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                    activeProgressTab === 'pkl'
+                      ? 'bg-white text-amber-700 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Nilai PKL ({overallPKLPercent}%)
+                </button>
+                <button
+                  onClick={() => setActiveProgressTab('ukk')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                    activeProgressTab === 'ukk'
+                      ? 'bg-white text-purple-700 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Nilai UKK ({overallUKKPercent}%)
+                </button>
+              </>
+            )}
           </div>
         </div>
 
-        {/* 3 Progress Bars Overview Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Progress Bars Overview Cards */}
+        <div className={`grid gap-3 sm:gap-4 ${schoolProfile.jenjang === 'SMK' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-5' : 'grid-cols-1 md:grid-cols-3'}`}>
           {/* Card 1: Nilai Guru */}
           <div
             onClick={() => setActiveProgressTab('nilai')}
@@ -423,6 +515,66 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <span className="font-bold text-emerald-600">{totalRombel - selesaiAbsensi} Belum</span>
             </div>
           </div>
+
+          {/* Card 4: Nilai PKL (Khusus SMK) */}
+          {schoolProfile.jenjang === 'SMK' && (
+            <div
+              onClick={() => setActiveProgressTab('pkl')}
+              className={`p-4 rounded-2xl border transition cursor-pointer ${
+                activeProgressTab === 'pkl'
+                  ? 'bg-amber-50/60 border-amber-300 ring-2 ring-amber-500/20'
+                  : 'bg-slate-50/60 border-slate-200 hover:bg-slate-100/50'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                  <Briefcase className="w-3.5 h-3.5 text-amber-600" />
+                  Nilai PKL (Kls XII)
+                </span>
+                <span className="text-xs font-extrabold text-amber-700">{overallPKLPercent}%</span>
+              </div>
+              <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                <div
+                  className="bg-amber-600 h-2.5 rounded-full transition-all duration-500"
+                  style={{ width: `${overallPKLPercent}%` }}
+                ></div>
+              </div>
+              <div className="flex items-center justify-between mt-2 text-[11px] text-slate-500 font-medium">
+                <span>{ratedSiswaPKL} dari {totalSiswaPKL} Murid Dinilai</span>
+                <span className="font-bold text-amber-600">{totalSiswaPKL - ratedSiswaPKL} Belum</span>
+              </div>
+            </div>
+          )}
+
+          {/* Card 5: Nilai UKK (Khusus SMK) */}
+          {schoolProfile.jenjang === 'SMK' && (
+            <div
+              onClick={() => setActiveProgressTab('ukk')}
+              className={`p-4 rounded-2xl border transition cursor-pointer ${
+                activeProgressTab === 'ukk'
+                  ? 'bg-purple-50/60 border-purple-300 ring-2 ring-purple-500/20'
+                  : 'bg-slate-50/60 border-slate-200 hover:bg-slate-100/50'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                  <Award className="w-3.5 h-3.5 text-purple-600" />
+                  Nilai UKK (Kls XII)
+                </span>
+                <span className="text-xs font-extrabold text-purple-700">{overallUKKPercent}%</span>
+              </div>
+              <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                <div
+                  className="bg-purple-600 h-2.5 rounded-full transition-all duration-500"
+                  style={{ width: `${overallUKKPercent}%` }}
+                ></div>
+              </div>
+              <div className="flex items-center justify-between mt-2 text-[11px] text-slate-500 font-medium">
+                <span>{ratedSiswaUKK} dari {totalSiswaUKK} Murid Teruji</span>
+                <span className="font-bold text-purple-600">{totalSiswaUKK - ratedSiswaUKK} Belum</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* DETAIL TAB 1: TABEL PROGRES NILAI GURU MAPEL */}
@@ -671,70 +823,294 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </table>
           </div>
         )}
+
+        {/* DETAIL TAB 4: TABEL PROGRES NILAI PKL (KHUSUS KELAS XII SMK) */}
+        {activeProgressTab === 'pkl' && (
+          <div className="space-y-3">
+            <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-amber-500 text-white rounded-xl">
+                  <Briefcase className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-amber-900 text-sm">
+                    Monitoring Penilaian Praktik Kerja Lapangan (PKL)
+                  </h4>
+                  <p className="text-amber-700 mt-0.5">
+                    Khusus tingkat Kelas XII (Fase F) SMK • Mengukur penilaian mitra DUDI, soft skills, hard skills, kemandirian, dan predikat.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1.5 rounded-xl bg-amber-100 text-amber-800 font-bold border border-amber-200">
+                  {selesaiPKLRombel} dari {pklProgressList.length} Rombel XII Tuntas
+                </span>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto border border-slate-200 rounded-2xl overflow-hidden">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+                  <tr>
+                    <th className="p-3 w-10 text-center">No</th>
+                    <th className="p-3">Rombel / Kelas XII</th>
+                    <th className="p-3">Konsentrasi Keahlian / Jurusan</th>
+                    <th className="p-3">Wali Kelas</th>
+                    <th className="p-3 text-center">Murid Dinilai PKL</th>
+                    <th className="p-3 w-36">Kelengkapan</th>
+                    <th className="p-3 text-center">Status</th>
+                    <th className="p-3 w-32 text-center">Aksi Cepat</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {pklProgressList.map((item, idx) => (
+                    <tr key={item.id} className="hover:bg-slate-50">
+                      <td className="p-3 text-center text-slate-400">{idx + 1}</td>
+                      <td className="p-3 font-bold text-amber-900">{item.nama}</td>
+                      <td className="p-3 font-semibold text-slate-700">{item.jurusanNama}</td>
+                      <td className="p-3 text-slate-800">{item.waliNama}</td>
+                      <td className="p-3 text-center font-bold">
+                        {item.ratedCount} / {item.totalSiswa} Murid
+                      </td>
+                      <td className="p-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-[10px] font-bold">
+                            <span>{item.percent}%</span>
+                          </div>
+                          <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                            <div
+                              className={`h-2 rounded-full ${
+                                item.status === 'selesai'
+                                  ? 'bg-emerald-500'
+                                  : item.status === 'sebagian'
+                                  ? 'bg-amber-500'
+                                  : 'bg-rose-400'
+                              }`}
+                              style={{ width: `${item.percent}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-3 text-center">
+                        {item.status === 'selesai' && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            ✓ Tuntas 100%
+                          </span>
+                        )}
+                        {item.status === 'sebagian' && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                            ⏳ Sebagian
+                          </span>
+                        )}
+                        {item.status === 'belum' && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                            ✕ Belum Diisi
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-3 text-center">
+                        <button
+                          onClick={() => {
+                            setSelectedRombelId(item.id);
+                            setActiveTab('pkl');
+                          }}
+                          className="px-3 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold rounded-lg text-[11px] transition flex items-center justify-center gap-1 mx-auto"
+                        >
+                          <Briefcase className="w-3 h-3" />
+                          <span>Input Nilai PKL</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {pklProgressList.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="p-6 text-center text-slate-400 italic">
+                        Belum ada data rombel Kelas XII untuk program PKL.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* DETAIL TAB 5: TABEL PROGRES NILAI UKK (UJI KOMPETENSI KEAHLIAN SMK) */}
+        {activeProgressTab === 'ukk' && (
+          <div className="space-y-3">
+            <div className="bg-purple-50/70 border border-purple-200/80 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-purple-600 text-white rounded-xl">
+                  <Award className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-purple-900 text-sm">
+                    Monitoring Uji Kompetensi Keahlian (UKK SMK)
+                  </h4>
+                  <p className="text-purple-700 mt-0.5">
+                    Sertifikasi & Ujian Praktik Kejuruan Tingkat Akhir • Mencatat nilai teori kejuruan, praktik, status kompetensi, & nomor sertifikat.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1.5 rounded-xl bg-purple-100 text-purple-800 font-bold border border-purple-200">
+                  {selesaiUKKRombel} dari {ukkProgressList.length} Rombel XII Tuntas
+                </span>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto border border-slate-200 rounded-2xl overflow-hidden">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+                  <tr>
+                    <th className="p-3 w-10 text-center">No</th>
+                    <th className="p-3">Rombel / Kelas XII</th>
+                    <th className="p-3">Skema Kejuruan</th>
+                    <th className="p-3">Wali / Penguji</th>
+                    <th className="p-3 text-center">Murid Kompeten</th>
+                    <th className="p-3 w-36">Kelengkapan</th>
+                    <th className="p-3 text-center">Status</th>
+                    <th className="p-3 w-32 text-center">Aksi Cepat</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {ukkProgressList.map((item, idx) => (
+                    <tr key={item.id} className="hover:bg-slate-50">
+                      <td className="p-3 text-center text-slate-400">{idx + 1}</td>
+                      <td className="p-3 font-bold text-purple-900">{item.nama}</td>
+                      <td className="p-3 font-semibold text-slate-700">{item.jurusanNama}</td>
+                      <td className="p-3 text-slate-800">{item.waliNama}</td>
+                      <td className="p-3 text-center font-bold">
+                        {item.ratedCount} / {item.totalSiswa} Murid
+                      </td>
+                      <td className="p-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-[10px] font-bold">
+                            <span>{item.percent}%</span>
+                          </div>
+                          <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                            <div
+                              className={`h-2 rounded-full ${
+                                item.status === 'selesai'
+                                  ? 'bg-emerald-500'
+                                  : item.status === 'sebagian'
+                                  ? 'bg-purple-500'
+                                  : 'bg-rose-400'
+                              }`}
+                              style={{ width: `${item.percent}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-3 text-center">
+                        {item.status === 'selesai' && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            ✓ Teruji Kompeten
+                          </span>
+                        )}
+                        {item.status === 'sebagian' && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                            ⏳ Sebagian
+                          </span>
+                        )}
+                        {item.status === 'belum' && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                            ✕ Belum Diisi
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-3 text-center">
+                        <button
+                          onClick={() => {
+                            setSelectedRombelId(item.id);
+                            setActiveTab('ukk');
+                          }}
+                          className="px-3 py-1 bg-purple-50 hover:bg-purple-100 text-purple-800 font-bold rounded-lg text-[11px] transition flex items-center justify-center gap-1 mx-auto"
+                        >
+                          <Award className="w-3 h-3" />
+                          <span>Input Nilai UKK</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {ukkProgressList.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="p-6 text-center text-slate-400 italic">
+                        Belum ada data rombel Kelas XII untuk pengujian UKK.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Feature Highlights Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Card 1: Smart Narrative Engine */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3 flex flex-col justify-between">
-          <div className="space-y-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-500 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
-              <Sparkles className="w-5 h-5" />
+      {/* Feature Highlights Grid (Hanya tampil untuk Administrator Sekolah) */}
+      {isAdmin && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Card 1: Smart Narrative Engine */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3 flex flex-col justify-between">
+            <div className="space-y-2">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-500 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <h3 className="font-bold text-slate-800 text-sm">Smart Narrative Engine</h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Otomatis merangkai narasi capaian kompetensi tertinggi dan terendah dengan menyertakan nama murid, rombel, jurusan, dan mapel. Tetap bisa diedit bebas oleh guru.
+              </p>
             </div>
-            <h3 className="font-bold text-slate-800 text-sm">Smart Narrative Engine</h3>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Otomatis merangkai narasi capaian kompetensi tertinggi dan terendah dengan menyertakan nama murid, rombel, jurusan, dan mapel. Tetap bisa diedit bebas oleh guru.
-            </p>
+            <button
+              onClick={() => setActiveTab('nilai')}
+              className="flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 pt-2 group"
+            >
+              <span>Buka Input Nilai</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition" />
+            </button>
           </div>
-          <button
-            onClick={() => setActiveTab('nilai')}
-            className="flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 pt-2 group"
-          >
-            <span>Buka Input Nilai</span>
-            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition" />
-          </button>
-        </div>
 
-        {/* Card 2: 100% Input Absensi Wali Kelas */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3 flex flex-col justify-between">
-          <div className="space-y-2">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-md shadow-emerald-500/20">
-              <CalendarCheck className="w-5 h-5" />
+          {/* Card 2: 100% Input Absensi Wali Kelas */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3 flex flex-col justify-between">
+            <div className="space-y-2">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-md shadow-emerald-500/20">
+                <CalendarCheck className="w-5 h-5" />
+              </div>
+              <h3 className="font-bold text-slate-800 text-sm">Absensi Manual Wali Kelas</h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Input Sakit, Izin, dan Alfa seluruh murid dalam 1 layar tabel mirip spreadsheet, lengkap dengan pencegahan typo dan validasi batas hari efektif.
+              </p>
             </div>
-            <h3 className="font-bold text-slate-800 text-sm">Absensi Manual Wali Kelas</h3>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Input Sakit, Izin, dan Alfa seluruh murid dalam 1 layar tabel mirip spreadsheet, lengkap dengan pencegahan typo dan validasi batas hari efektif.
-            </p>
+            <button
+              onClick={() => setActiveTab('kehadiran')}
+              className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 hover:text-emerald-800 pt-2 group"
+            >
+              <span>Input Absensi Kelas</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition" />
+            </button>
           </div>
-          <button
-            onClick={() => setActiveTab('kehadiran')}
-            className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 hover:text-emerald-800 pt-2 group"
-          >
-            <span>Input Absensi Kelas</span>
-            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition" />
-          </button>
-        </div>
 
-        {/* Card 3: Universal K-12 */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3 flex flex-col justify-between">
-          <div className="space-y-2">
-            <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/20">
-              <School className="w-5 h-5" />
+          {/* Card 3: Universal K-12 */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3 flex flex-col justify-between">
+            <div className="space-y-2">
+              <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/20">
+                <School className="w-5 h-5" />
+              </div>
+              <h3 className="font-bold text-slate-800 text-sm">Universal K-12 Kurikulum Merdeka</h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Mendukung SD, SMP, SMA, dan SMK. Modul PKL & UKK otomatis aktif pada jenjang SMK, dan disembunyikan secara bersih pada jenjang SD/SMP/SMA.
+              </p>
             </div>
-            <h3 className="font-bold text-slate-800 text-sm">Universal K-12 Kurikulum Merdeka</h3>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Mendukung SD, SMP, SMA, dan SMK. Modul PKL & UKK otomatis aktif pada jenjang SMK, dan disembunyikan secara bersih pada jenjang SD/SMP/SMA.
-            </p>
+            <button
+              onClick={onOpenSettings}
+              className="flex items-center gap-1.5 text-xs font-bold text-amber-600 hover:text-amber-800 pt-2 group"
+            >
+              <span>Ubah Jenjang Sekolah</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition" />
+            </button>
           </div>
-          <button
-            onClick={onOpenSettings}
-            className="flex items-center gap-1.5 text-xs font-bold text-amber-600 hover:text-amber-800 pt-2 group"
-          >
-            <span>Ubah Jenjang Sekolah</span>
-            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition" />
-          </button>
         </div>
-      </div>
+      )}
     </div>
   );
 };

@@ -289,18 +289,11 @@ export const InputNilaiView: React.FC = () => {
               </div>
             </div>
 
-            {/* Quick Switch Guru for testing */}
             <div className="flex items-center gap-1.5 self-end sm:self-auto">
-              <span className="text-[10px] text-slate-400">Ganti Akun Guru:</span>
-              <select
-                value={currentGuruId}
-                onChange={(e) => setCurrentGuruId(e.target.value)}
-                className="text-xs font-semibold bg-white border border-slate-200 rounded-lg px-2 py-1"
-              >
-                {guru.map(g => (
-                  <option key={g.id} value={g.id}>{g.nama}</option>
-                ))}
-              </select>
+              <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-[10px] font-bold flex items-center gap-1">
+                <Check className="w-3 h-3 text-emerald-600" />
+                <span>Akun Terverifikasi</span>
+              </span>
             </div>
           </div>
         )}
