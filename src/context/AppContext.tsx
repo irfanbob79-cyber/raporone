@@ -109,7 +109,7 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'eraporone_data_v3';
+const STORAGE_KEY = 'eraporone_data_v4';
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [schoolProfile, setSchoolProfile] = useState<SchoolProfile>(() => {
