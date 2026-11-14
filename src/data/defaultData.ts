@@ -4570,6 +4570,7 @@ export const defaultUserAccounts: UserAccount[] = [
   {
     id: 'user-admin',
     username: 'admin',
+    password: 'admin123',
     nama: 'Administrator Sistem',
     role: 'admin',
     keterangan: 'Administrator Sistem (Akses Penuh Seluruh Modul)'
@@ -4577,6 +4578,7 @@ export const defaultUserAccounts: UserAccount[] = [
   {
     id: 'user-kepsek',
     username: 'kepala',
+    password: 'admin123',
     nama: 'Drs. H. Suwito, M.M.',
     role: 'kepala_sekolah',
     guruId: 'guru-kepsek',
@@ -4585,6 +4587,7 @@ export const defaultUserAccounts: UserAccount[] = [
   {
     id: 'user-wakur',
     username: 'wakur',
+    password: 'admin123',
     nama: 'Endang Wahyuni, S.Pd., M.Pd.',
     role: 'waka_kurikulum',
     guruId: 'guru-wakur',
@@ -4593,6 +4596,7 @@ export const defaultUserAccounts: UserAccount[] = [
   {
     id: 'user-guru-1',
     username: '197508102005011005',
+    password: 'guru123',
     nama: 'Bambang Irawan, S.Pd.',
     role: 'wali_kelas',
     guruId: 'guru-1',
@@ -4604,6 +4608,7 @@ export const defaultUserAccounts: UserAccount[] = [
   {
     id: 'user-guru-2',
     username: '198203152010012015',
+    password: 'guru123',
     nama: 'Siti Rahmawati, S.Kom., M.T.',
     role: 'wali_kelas',
     guruId: 'guru-2',
@@ -4615,6 +4620,7 @@ export const defaultUserAccounts: UserAccount[] = [
   {
     id: 'user-guru-3',
     username: '198811202014022003',
+    password: 'guru123',
     nama: 'Dewi Lestari, S.E., Ak.',
     role: 'wali_kelas',
     guruId: 'guru-3',
@@ -4626,6 +4632,7 @@ export const defaultUserAccounts: UserAccount[] = [
   {
     id: 'user-guru-4',
     username: '197904052008011012',
+    password: 'guru123',
     nama: 'Drs. Agus Setiawan, M.Hum.',
     role: 'guru', // Role: Guru Mapel (Hanya input mapel yang diampu)
     guruId: 'guru-4',

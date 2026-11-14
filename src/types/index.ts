@@ -183,6 +183,7 @@ export interface NilaiUKK {
 export interface UserAccount {
   id: string;
   username: string;
+  password?: string;
   nama: string;
   role: 'admin' | 'guru' | 'wali_kelas' | 'kepala_sekolah' | 'waka_kurikulum';
   guruId?: string;

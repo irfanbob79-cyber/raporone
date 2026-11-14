@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import { Siswa, Guru, Rombel, MataPelajaran, TujuanPembelajaran } from '../types';
+import { Siswa, Guru, Rombel, MataPelajaran, TujuanPembelajaran, UserAccount } from '../types';
 
 export interface ValidationIssue {
   row: number;
@@ -280,4 +280,80 @@ export function exportLeggerExcel(
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, `Leger_${rombel.kode}`);
   XLSX.writeFile(wb, `Leger_Nilai_${rombel.kode}.xlsx`);
+}
+
+// 7. Export Daftar Akun Pengguna & Kredensial Login
+export function exportAccountsExcel(
+  accounts: UserAccount[],
+  schoolName: string,
+  rombelList: Rombel[] = [],
+  ekskulList: { id: string; nama: string }[] = []
+) {
+  const getRoleDisplayName = (role: string) => {
+    switch (role) {
+      case 'admin': return 'Administrator Sistem';
+      case 'kepala_sekolah': return 'Kepala Sekolah';
+      case 'waka_kurikulum': return 'Waka Kurikulum';
+      case 'wali_kelas': return 'Wali Kelas';
+      case 'guru': return 'Guru Mata Pelajaran';
+      default: return role;
+    }
+  };
+
+  const headers = [
+    'No',
+    'Nama Pengguna',
+    'Peran (Role)',
+    'Username / NIP Login',
+    'Password Login',
+    'Tugas Wali Kelas',
+    'Tugas Pembina Ekskul',
+    'Keterangan Hak Akses',
+    'Tautan Portal Login'
+  ];
+
+  const rows: any[][] = [
+    [`DAFTAR AKUN PENGGUNA & KREDENSIAL LOGIN - ${schoolName.toUpperCase()}`],
+    [`Aplikasi: eRaporOne Kurikulum Merdeka | Tanggal Unduh: ${new Date().toLocaleDateString('id-ID')}`],
+    [`Website Resmi: https://raporone.hsgserver.my.id/`],
+    [],
+    headers
+  ];
+
+  accounts.forEach((acc, index) => {
+    const waliRombel = acc.rombelWaliId ? rombelList.find(r => r.id === acc.rombelWaliId) : undefined;
+    const pembina = acc.ekskulId ? ekskulList.find(e => e.id === acc.ekskulId) : undefined;
+    const pass = acc.password || (acc.role === 'admin' ? 'admin123' : 'guru123');
+
+    rows.push([
+      index + 1,
+      acc.nama,
+      getRoleDisplayName(acc.role),
+      acc.username,
+      pass,
+      waliRombel?.nama || '-',
+      pembina?.nama || '-',
+      acc.keterangan || '-',
+      'https://raporone.hsgserver.my.id/'
+    ]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+
+  // Set column widths
+  ws['!cols'] = [
+    { wch: 6 },
+    { wch: 32 },
+    { wch: 24 },
+    { wch: 25 },
+    { wch: 18 },
+    { wch: 22 },
+    { wch: 22 },
+    { wch: 40 },
+    { wch: 35 }
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Daftar Akun Pengguna');
+  XLSX.writeFile(wb, `Daftar_Akun_Login_eRaporOne_${schoolName.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`);
 }

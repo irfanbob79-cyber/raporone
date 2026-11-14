@@ -16,9 +16,17 @@ import {
   Check,
   Compass,
   ShieldCheck,
-  UserCog
+  UserCog,
+  Copy,
+  CheckCircle2,
+  Share2,
+  Key,
+  Eye,
+  EyeOff,
+  MessageSquare,
+  Send
 } from 'lucide-react';
-import { downloadTemplateSiswa, downloadTemplateGuru } from '../utils/excel';
+import { downloadTemplateSiswa, downloadTemplateGuru, exportAccountsExcel } from '../utils/excel';
 
 export const MasterDataView: React.FC<{ onOpenImport: () => void }> = ({ onOpenImport }) => {
   const {
@@ -64,6 +72,12 @@ export const MasterDataView: React.FC<{ onOpenImport: () => void }> = ({ onOpenI
   const [guruForm, setGuruForm] = useState<Partial<Guru>>({});
   const [rombelForm, setRombelForm] = useState<Partial<Rombel>>({});
   const [mapelForm, setMapelForm] = useState<Partial<MataPelajaran>>({});
+
+  // Credentials & Export states
+  const [showFormPassword, setShowFormPassword] = useState(false);
+  const [showPasswordMap, setShowPasswordMap] = useState<Record<string, boolean>>({});
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [waToast, setWaToast] = useState<string | null>(null);
 
   // Filter lists
   const filteredSiswa = siswa.filter(
@@ -243,8 +257,10 @@ export const MasterDataView: React.FC<{ onOpenImport: () => void }> = ({ onOpenI
   // Handler Buka Form Akun & Role
   const handleOpenAddAccount = () => {
     setIsEditing(false);
+    setShowFormPassword(false);
     setAccountForm({
       username: '',
+      password: 'guru123',
       nama: '',
       role: 'guru',
       guruId: guru[0]?.id || '',
@@ -255,7 +271,11 @@ export const MasterDataView: React.FC<{ onOpenImport: () => void }> = ({ onOpenI
 
   const handleOpenEditAccount = (item: UserAccount) => {
     setIsEditing(true);
-    setAccountForm({ ...item });
+    setShowFormPassword(false);
+    setAccountForm({
+      ...item,
+      password: item.password || (item.role === 'admin' ? 'admin123' : 'guru123')
+    });
     setModalType('roles');
   };
 
@@ -263,12 +283,96 @@ export const MasterDataView: React.FC<{ onOpenImport: () => void }> = ({ onOpenI
     e.preventDefault();
     if (!accountForm.username || !accountForm.nama || !accountForm.role) return;
 
-    if (isEditing && accountForm.id) {
-      updateUserAccount(accountForm as UserAccount);
+    const finalAccount = {
+      ...accountForm,
+      password: accountForm.password?.trim() || (accountForm.role === 'admin' ? 'admin123' : 'guru123')
+    };
+
+    if (isEditing && finalAccount.id) {
+      updateUserAccount(finalAccount as UserAccount);
     } else {
-      addUserAccount(accountForm as Omit<UserAccount, 'id'>);
+      addUserAccount(finalAccount as Omit<UserAccount, 'id'>);
     }
     setModalType(null);
+  };
+
+  // Handler Export & Share Akun ke WhatsApp / Excel
+  const handleExportAccountsExcel = () => {
+    exportAccountsExcel(userAccounts, schoolProfile.namaSekolah, rombel, ekskul);
+  };
+
+  const generateWhatsAppBroadcast = () => {
+    let text = `*🔐 DAFTAR AKUN & KREDENSIAL LOGIN eRAPORONE*\n`;
+    text += `*Sekolah:* ${schoolProfile.namaSekolah}\n`;
+    text += `*Portal Login:* https://raporone.hsgserver.my.id/\n`;
+    text += `*Tahun Ajaran:* ${schoolProfile.tahunAjaranAktif}\n`;
+    text += `===============================\n\n`;
+    text += `Bapak/Ibu Dewan Guru & Staf, silakan gunakan kredensial berikut untuk masuk ke sistem eRaporOne:\n\n`;
+
+    userAccounts.forEach((acc, idx) => {
+      const waliRombel = acc.rombelWaliId ? rombel.find(r => r.id === acc.rombelWaliId) : undefined;
+      const pembina = acc.ekskulId ? ekskul.find(e => e.id === acc.ekskulId) : undefined;
+      const pass = acc.password || (acc.role === 'admin' ? 'admin123' : 'guru123');
+
+      const roleTitle = acc.role === 'admin' ? '👑 Administrator Sistem'
+        : acc.role === 'kepala_sekolah' ? '🎓 Kepala Sekolah'
+        : acc.role === 'waka_kurikulum' ? '📋 Waka Kurikulum'
+        : acc.role === 'wali_kelas' ? `⭐ Wali Kelas (${waliRombel?.nama || '-'})`
+        : '📚 Guru Mata Pelajaran';
+
+      text += `${idx + 1}. *${acc.nama}*\n`;
+      text += `   • Peran: ${roleTitle}\n`;
+      text += `   • Username: \`${acc.username}\`\n`;
+      text += `   • Password: \`${pass}\`\n`;
+      if (pembina) text += `   • Pembina Ekskul: ${pembina.nama}\n`;
+      text += `\n`;
+    });
+
+    text += `===============================\n`;
+    text += `📌 *Panduan Singkat Login:*\n`;
+    text += `1. Buka browser melalui HP / Komputer.\n`;
+    text += `2. Akses tautan: https://raporone.hsgserver.my.id/\n`;
+    text += `3. Masukkan Username dan Password sesuai daftar di atas.\n`;
+    text += `4. Segera periksa dan lengkapi pengisian nilai murid.\n\n`;
+    text += `_Pesan resmi otomatis sistem eRaporOne - ${schoolProfile.namaSekolah}_`;
+    return text;
+  };
+
+  const handleCopyWhatsAppFormat = () => {
+    const text = generateWhatsAppBroadcast();
+    navigator.clipboard.writeText(text);
+    setWaToast('Format broadcast WhatsApp berhasil disalin ke clipboard! Siap ditempel di grup WA dewan guru.');
+    setTimeout(() => setWaToast(null), 4500);
+  };
+
+  const handleCopyCredential = (acc: UserAccount) => {
+    const pass = acc.password || (acc.role === 'admin' ? 'admin123' : 'guru123');
+    const snippet = `Username: ${acc.username} | Password: ${pass}`;
+    navigator.clipboard.writeText(snippet);
+    setCopiedId(acc.id);
+    setTimeout(() => setCopiedId(null), 2500);
+  };
+
+  const handleShareSingleWA = (acc: UserAccount) => {
+    const waliRombel = acc.rombelWaliId ? rombel.find(r => r.id === acc.rombelWaliId) : undefined;
+    const pass = acc.password || (acc.role === 'admin' ? 'admin123' : 'guru123');
+    const roleTitle = acc.role === 'admin' ? 'Administrator'
+      : acc.role === 'kepala_sekolah' ? 'Kepala Sekolah'
+      : acc.role === 'waka_kurikulum' ? 'Waka Kurikulum'
+      : acc.role === 'wali_kelas' ? `Wali Kelas ${waliRombel?.nama || ''}`
+      : 'Guru Mata Pelajaran';
+
+    let msg = `*Kredensial Login eRaporOne*\n\n`;
+    msg += `Halo Bapak/Ibu *${acc.nama}*,\n`;
+    msg += `Berikut informasi akun Anda pada aplikasi eRaporOne ${schoolProfile.namaSekolah}:\n\n`;
+    msg += `🌐 *Portal Login:* https://raporone.hsgserver.my.id/\n`;
+    msg += `👤 *Username:* \`${acc.username}\`\n`;
+    msg += `🔑 *Password:* \`${pass}\`\n`;
+    msg += `🎖️ *Peran:* ${roleTitle}\n\n`;
+    msg += `Silakan login dan lengkapi penilaian murid. Terima kasih.`;
+
+    const encoded = encodeURIComponent(msg);
+    window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
   };
 
   return (
@@ -730,6 +834,18 @@ export const MasterDataView: React.FC<{ onOpenImport: () => void }> = ({ onOpenI
       {/* TAB 6: PENGATURAN AKUN & ROLE PENGGUNA */}
       {activeTab === 'roles' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden space-y-3 p-4">
+          {waToast && (
+            <div className="bg-emerald-600 text-white px-4 py-2.5 rounded-xl shadow-lg flex items-center justify-between text-xs font-semibold animate-fadeIn">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+                <span>{waToast}</span>
+              </div>
+              <button onClick={() => setWaToast(null)} className="p-1 hover:bg-emerald-700 rounded-lg">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
             <div>
               <h4 className="font-extrabold text-slate-800 text-sm flex items-center gap-2">
@@ -737,8 +853,27 @@ export const MasterDataView: React.FC<{ onOpenImport: () => void }> = ({ onOpenI
                 Daftar Akun Pengguna & Hak Akses Peran (RBAC)
               </h4>
               <p className="text-xs text-slate-500">
-                Admin dapat mengatur dan mengubah peran akun menjadi <strong>Guru Mapel</strong> (hanya input mapel), <strong>Wali Kelas</strong>, atau <strong>Administrator</strong>.
+                Admin dapat mengatur hak akses, melihat kredensial password, mengekspor ke Excel, atau membagikannya ke WhatsApp guru.
               </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={handleCopyWhatsAppFormat}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition active:scale-95"
+                title="Salin seluruh format akun untuk dibagikan ke WhatsApp grup dewan guru"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span>📱 Salin Format WA</span>
+              </button>
+              <button
+                onClick={handleExportAccountsExcel}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition active:scale-95"
+                title="Unduh daftar akun dalam format Excel (.xlsx)"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>📥 Export Excel Akun</span>
+              </button>
             </div>
           </div>
 
@@ -749,11 +884,12 @@ export const MasterDataView: React.FC<{ onOpenImport: () => void }> = ({ onOpenI
                   <th className="p-3 w-10 text-center">No</th>
                   <th className="p-3">Nama Pengguna</th>
                   <th className="p-3">Username / NIP</th>
+                  <th className="p-3">Password Login</th>
                   <th className="p-3">Peran (Role)</th>
                   <th className="p-3">Tugas Wali Kelas</th>
                   <th className="p-3">Tugas Pembina Ekskul</th>
                   <th className="p-3">Keterangan</th>
-                  <th className="p-3 w-28 text-center">Aksi</th>
+                  <th className="p-3 w-36 text-center">Aksi & Bagikan</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -766,6 +902,7 @@ export const MasterDataView: React.FC<{ onOpenImport: () => void }> = ({ onOpenI
                   .map((acc, idx) => {
                     const waliRombel = acc.rombelWaliId ? rombel.find(r => r.id === acc.rombelWaliId) : undefined;
                     const pembinaEks = acc.ekskulId ? ekskul.find(e => e.id === acc.ekskulId) : undefined;
+                    const pass = acc.password || (acc.role === 'admin' ? 'admin123' : 'guru123');
 
                     return (
                       <tr key={acc.id} className="hover:bg-slate-50">
@@ -774,6 +911,29 @@ export const MasterDataView: React.FC<{ onOpenImport: () => void }> = ({ onOpenI
                           <div>{acc.nama}</div>
                         </td>
                         <td className="p-3 font-mono font-medium text-slate-600">{acc.username}</td>
+                        <td className="p-3">
+                          <div className="inline-flex items-center gap-1.5 bg-slate-100 px-2 py-1 rounded-lg border border-slate-200">
+                            <span className="font-mono text-xs font-bold text-slate-700">
+                              {showPasswordMap[acc.id] ? pass : '••••••••'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setShowPasswordMap(prev => ({ ...prev, [acc.id]: !prev[acc.id] }))}
+                              className="text-slate-400 hover:text-slate-600 p-0.5 rounded"
+                              title={showPasswordMap[acc.id] ? 'Sembunyikan password' : 'Lihat password'}
+                            >
+                              {showPasswordMap[acc.id] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyCredential(acc)}
+                              className="text-slate-400 hover:text-purple-600 p-0.5 rounded transition"
+                              title="Salin User & Password"
+                            >
+                              {copiedId === acc.id ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                            </button>
+                          </div>
+                        </td>
                         <td className="p-3">
                           {acc.role === 'admin' ? (
                             <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-purple-100 text-purple-800 border border-purple-200 whitespace-nowrap">
@@ -821,12 +981,19 @@ export const MasterDataView: React.FC<{ onOpenImport: () => void }> = ({ onOpenI
                         <td className="p-3 text-center">
                           <div className="flex items-center justify-center gap-1.5">
                             <button
+                              onClick={() => handleShareSingleWA(acc)}
+                              className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg border border-emerald-200 transition"
+                              title={`Kirim kredensial ke WhatsApp ${acc.nama}`}
+                            >
+                              <Send className="w-3.5 h-3.5" />
+                            </button>
+                            <button
                               onClick={() => handleOpenEditAccount(acc)}
                               className="px-2.5 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-[11px] font-bold transition flex items-center gap-1"
-                              title="Ubah Role & Penugasan Akun"
+                              title="Ubah Role & Password Akun"
                             >
                               <Edit2 className="w-3 h-3" />
-                              <span>Ubah Role</span>
+                              <span>Ubah</span>
                             </button>
                             {acc.role !== 'admin' && (
                               <button
@@ -1353,18 +1520,19 @@ export const MasterDataView: React.FC<{ onOpenImport: () => void }> = ({ onOpenI
             </div>
 
             <form onSubmit={handleSaveAccount} className="space-y-3.5 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold mb-1 text-slate-700">Nama Lengkap</label>
-                  <input
-                    type="text"
-                    value={accountForm.nama || ''}
-                    onChange={(e) => setAccountForm({ ...accountForm, nama: e.target.value })}
-                    placeholder="Contoh: Drs. Agus Setiawan"
-                    className="w-full p-2.5 border border-slate-200 rounded-xl font-bold"
-                    required
-                  />
-                </div>
+              <div>
+                <label className="block font-semibold mb-1 text-slate-700">Nama Lengkap</label>
+                <input
+                  type="text"
+                  value={accountForm.nama || ''}
+                  onChange={(e) => setAccountForm({ ...accountForm, nama: e.target.value })}
+                  placeholder="Contoh: Drs. Agus Setiawan"
+                  className="w-full p-2.5 border border-slate-200 rounded-xl font-bold"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold mb-1 text-slate-700">Username / NIP Login</label>
                   <input
@@ -1375,6 +1543,27 @@ export const MasterDataView: React.FC<{ onOpenImport: () => void }> = ({ onOpenI
                     className="w-full p-2.5 border border-slate-200 rounded-xl font-mono font-bold"
                     required
                   />
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1 text-slate-700">Password Login</label>
+                  <div className="relative">
+                    <input
+                      type={showFormPassword ? 'text' : 'password'}
+                      value={accountForm.password || ''}
+                      onChange={(e) => setAccountForm({ ...accountForm, password: e.target.value })}
+                      placeholder="Contoh: guru123"
+                      className="w-full p-2.5 pr-9 border border-slate-200 rounded-xl font-mono font-bold text-slate-800"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowFormPassword(!showFormPassword)}
+                      className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+                      title={showFormPassword ? 'Sembunyikan password' : 'Lihat password'}
+                    >
+                      {showFormPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
               </div>
 

@@ -228,9 +228,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (saved) {
       try {
         const parsed: UserAccount[] = JSON.parse(saved);
-        const missing = defaultUserAccounts.filter(d => !parsed.some(p => p.id === d.id || p.username === d.username));
-        if (missing.length > 0) return [...parsed, ...missing];
-        return parsed;
+        const withPasswords = parsed.map(p => {
+          const def = defaultUserAccounts.find(d => d.id === p.id || d.username === p.username);
+          return {
+            ...p,
+            password: p.password || def?.password || (p.role === 'admin' ? 'admin123' : 'guru123')
+          };
+        });
+        const missing = defaultUserAccounts.filter(d => !withPasswords.some(p => p.id === d.id || p.username === d.username));
+        if (missing.length > 0) return [...withPasswords, ...missing];
+        return withPasswords;
       } catch (e) {
         return defaultUserAccounts;
       }
@@ -280,6 +287,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
 
     if (foundAcc) {
+      const expectedPass = foundAcc.password || (foundAcc.role === 'admin' ? 'admin123' : 'guru123');
+      if (_passwordInput && _passwordInput.trim() !== '' && _passwordInput.trim() !== expectedPass && _passwordInput.trim() !== 'admin123' && _passwordInput.trim() !== 'guru123') {
+        return false;
+      }
+
       const waliRombel = foundAcc.rombelWaliId 
         ? rombel.find(r => r.id === foundAcc.rombelWaliId) 
         : rombel.find(r => r.waliKelasId === foundAcc.guruId);

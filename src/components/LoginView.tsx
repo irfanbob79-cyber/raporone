@@ -1,12 +1,41 @@
 import React, { useState } from 'react';
 import { useApp, UserSession } from '../context/AppContext';
-import { Shield, UserCheck, Lock, User, ArrowRight, CheckCircle2, Sparkles, School, GraduationCap, BookOpen } from 'lucide-react';
+import {
+  Shield,
+  UserCheck,
+  Lock,
+  User,
+  ArrowRight,
+  CheckCircle2,
+  Sparkles,
+  School,
+  GraduationCap,
+  BookOpen,
+  Key,
+  Copy,
+  Check,
+  Eye,
+  EyeOff,
+  MessageSquare,
+  Download,
+  X,
+  Search,
+  Send
+} from 'lucide-react';
+import { exportAccountsExcel } from '../utils/excel';
 
 export const LoginView: React.FC = () => {
   const { login, loginAsDemo, guru, rombel, ekskul, schoolProfile, userAccounts } = useApp();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Modal Daftar Akun & Password
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
+  const [searchAcc, setSearchAcc] = useState('');
+  const [showPasswordMap, setShowPasswordMap] = useState<Record<string, boolean>>({});
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [modalToast, setModalToast] = useState<string | null>(null);
 
   const getRoleLabel = (idOrGuruId: string, defaultLabel: string) => {
     const acc = userAccounts?.find(u => 
@@ -31,8 +60,79 @@ export const LoginView: React.FC = () => {
     setErrorMsg('');
     const success = login(username, password);
     if (!success) {
-      setErrorMsg('Username atau password tidak sesuai. Coba username: admin (pass: admin123) atau gunakan Kartu Demo di bawah.');
+      setErrorMsg('Username atau password tidak sesuai. Silakan klik tombol "Lihat Daftar Akun & Password" di bawah untuk melihat kredensial resmi.');
     }
+  };
+
+  // Helper WA Broadcast
+  const generateWhatsAppBroadcast = () => {
+    let text = `*🔐 DAFTAR AKUN & KREDENSIAL LOGIN eRAPORONE*\n`;
+    text += `*Sekolah:* ${schoolProfile.namaSekolah}\n`;
+    text += `*Portal Login:* https://raporone.hsgserver.my.id/\n`;
+    text += `*Tahun Ajaran:* ${schoolProfile.tahunAjaranAktif}\n`;
+    text += `===============================\n\n`;
+    text += `Bapak/Ibu Dewan Guru & Staf, silakan gunakan kredensial berikut untuk masuk ke sistem eRaporOne:\n\n`;
+
+    userAccounts.forEach((acc, idx) => {
+      const waliRombel = acc.rombelWaliId ? rombel.find(r => r.id === acc.rombelWaliId) : undefined;
+      const pembina = acc.ekskulId ? ekskul.find(e => e.id === acc.ekskulId) : undefined;
+      const pass = acc.password || (acc.role === 'admin' ? 'admin123' : 'guru123');
+
+      const roleTitle = acc.role === 'admin' ? '👑 Administrator Sistem'
+        : acc.role === 'kepala_sekolah' ? '🎓 Kepala Sekolah'
+        : acc.role === 'waka_kurikulum' ? '📋 Waka Kurikulum'
+        : acc.role === 'wali_kelas' ? `⭐ Wali Kelas (${waliRombel?.nama || '-'})`
+        : '📚 Guru Mata Pelajaran';
+
+      text += `${idx + 1}. *${acc.nama}*\n`;
+      text += `   • Peran: ${roleTitle}\n`;
+      text += `   • Username: \`${acc.username}\`\n`;
+      text += `   • Password: \`${pass}\`\n`;
+      if (pembina) text += `   • Pembina Ekskul: ${pembina.nama}\n`;
+      text += `\n`;
+    });
+
+    text += `===============================\n`;
+    text += `📌 *Panduan Singkat Login:*\n`;
+    text += `1. Buka browser melalui HP / Komputer.\n`;
+    text += `2. Akses tautan: https://raporone.hsgserver.my.id/\n`;
+    text += `3. Masukkan Username dan Password di atas.\n\n`;
+    text += `_Pesan resmi sistem eRaporOne - ${schoolProfile.namaSekolah}_`;
+    return text;
+  };
+
+  const handleCopyWhatsAppFormat = () => {
+    const text = generateWhatsAppBroadcast();
+    navigator.clipboard.writeText(text);
+    setModalToast('Format broadcast WhatsApp berhasil disalin ke clipboard!');
+    setTimeout(() => setModalToast(null), 4000);
+  };
+
+  const handleCopyCredential = (accId: string, uname: string, pass: string) => {
+    navigator.clipboard.writeText(`Username: ${uname} | Password: ${pass}`);
+    setCopiedId(accId);
+    setTimeout(() => setCopiedId(null), 2500);
+  };
+
+  const handleAutoFillAndLogin = (uname: string, pass: string) => {
+    setUsername(uname);
+    setPassword(pass);
+    setIsAccountModalOpen(false);
+    login(uname, pass);
+  };
+
+  const handleShareSingleWA = (accName: string, uname: string, pass: string, roleName: string) => {
+    let msg = `*Kredensial Login eRaporOne*\n\n`;
+    msg += `Halo Bapak/Ibu *${accName}*,\n`;
+    msg += `Berikut informasi akun Anda pada aplikasi eRaporOne ${schoolProfile.namaSekolah}:\n\n`;
+    msg += `🌐 *Portal Login:* https://raporone.hsgserver.my.id/\n`;
+    msg += `👤 *Username:* \`${uname}\`\n`;
+    msg += `🔑 *Password:* \`${pass}\`\n`;
+    msg += `🎖️ *Peran:* ${roleName}\n\n`;
+    msg += `Silakan login dan lengkapi pengisian rapor. Terima kasih.`;
+
+    const encoded = encodeURIComponent(msg);
+    window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
   };
 
   return (
@@ -107,9 +207,9 @@ export const LoginView: React.FC = () => {
                     className="w-full bg-slate-900/80 border border-slate-700 text-white rounded-xl pl-9 pr-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   />
                 </div>
-                <span className="text-[10px] text-slate-400 mt-1 block">
-                  *Default password admin: <code>admin123</code> (guru: kosongkan atau sembarang)
-                </span>
+                <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1">
+                  <span>Pass Admin: <code>admin123</code> | Guru: <code>guru123</code></span>
+                </div>
               </div>
 
               <button
@@ -119,18 +219,39 @@ export const LoginView: React.FC = () => {
                 <span>Masuk Sekarang</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
+
+              <div className="pt-2 border-t border-slate-700/60">
+                <button
+                  type="button"
+                  onClick={() => setIsAccountModalOpen(true)}
+                  className="w-full py-2 px-3 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5"
+                >
+                  <Key className="w-3.5 h-3.5" />
+                  <span>🔑 Buka Daftar Semua Akun & Password Login</span>
+                </button>
+              </div>
             </form>
           </div>
 
           {/* Kolom Kanan: Pilihan Akses Cepat / Demo Berdasarkan Peran */}
           <div className="lg:col-span-7 space-y-3">
-            <div className="bg-slate-800/40 rounded-2xl p-4 border border-slate-700/50">
-              <span className="text-[11px] font-bold text-blue-400 uppercase tracking-wider block mb-1">
-                ⚡ Akses Cepat (Sesuai Hak Peran RBAC)
-              </span>
-              <p className="text-xs text-slate-400">
-                Pilih profil di bawah untuk langsung menguji tampilan role:
-              </p>
+            <div className="bg-slate-800/40 rounded-2xl p-4 border border-slate-700/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+              <div>
+                <span className="text-[11px] font-bold text-blue-400 uppercase tracking-wider block mb-0.5">
+                  ⚡ Akses Cepat (Sesuai Hak Peran RBAC)
+                </span>
+                <p className="text-xs text-slate-400">
+                  Pilih profil di bawah untuk langsung masuk atau gunakan kredensialnya:
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAccountModalOpen(true)}
+                className="text-xs text-purple-300 hover:text-purple-200 font-bold flex items-center gap-1 bg-purple-900/40 px-2.5 py-1 rounded-lg border border-purple-500/30 transition"
+              >
+                <Key className="w-3 h-3 text-purple-400" />
+                <span>Lihat Semua Akun</span>
+              </button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[440px] overflow-y-auto pr-1">
@@ -153,6 +274,9 @@ export const LoginView: React.FC = () => {
                     Akses penuh: Kelola akun & role, data master, semua nilai rombel, dan cetak rapor se-sekolah.
                   </p>
                 </div>
+                <div className="text-[10px] font-mono bg-slate-900/90 text-purple-300 px-2 py-0.5 rounded border border-purple-500/30 w-fit">
+                  User: <strong>admin</strong> | Pass: <strong>admin123</strong>
+                </div>
               </button>
 
               {/* 2. KEPALA SEKOLAH */}
@@ -173,6 +297,9 @@ export const LoginView: React.FC = () => {
                   <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
                     Kepala Sekolah • Monitoring menyeluruh semua kelas, absensi, ekskul, PKL, UKK, & cetak rapor.
                   </p>
+                </div>
+                <div className="text-[10px] font-mono bg-slate-900/90 text-rose-300 px-2 py-0.5 rounded border border-rose-500/30 w-fit">
+                  User: <strong>kepala</strong> | Pass: <strong>admin123</strong>
                 </div>
               </button>
 
@@ -195,6 +322,9 @@ export const LoginView: React.FC = () => {
                     Waka Kurikulum • Supervisi akademik, ketercapaian TP, progres guru se-sekolah, & legger nilai.
                   </p>
                 </div>
+                <div className="text-[10px] font-mono bg-slate-900/90 text-indigo-300 px-2 py-0.5 rounded border border-indigo-500/30 w-fit">
+                  User: <strong>wakur</strong> | Pass: <strong>admin123</strong>
+                </div>
               </button>
 
               {/* 4. BAMBANG IRAWAN (Wali Kelas XII TSM & Pembina Otomotif) */}
@@ -215,6 +345,9 @@ export const LoginView: React.FC = () => {
                   <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
                     Guru Otomotif • Wali Kelas XII TSM (Cetak Rapor & PKL) • Pembina Klub Otomotif.
                   </p>
+                </div>
+                <div className="text-[10px] font-mono bg-slate-900/90 text-amber-300 px-2 py-0.5 rounded border border-amber-500/30 w-fit">
+                  User: <strong>197508102005011005</strong> | Pass: <strong>guru123</strong>
                 </div>
               </button>
 
@@ -237,6 +370,9 @@ export const LoginView: React.FC = () => {
                     Guru DKV • Wali Kelas XI DKV (Cetak Rapor) • Pembina Desain Kreatif.
                   </p>
                 </div>
+                <div className="text-[10px] font-mono bg-slate-900/90 text-blue-300 px-2 py-0.5 rounded border border-blue-500/30 w-fit">
+                  User: <strong>198203152010012015</strong> | Pass: <strong>guru123</strong>
+                </div>
               </button>
 
               {/* 6. AGUS SETIAWAN (Guru Mapel Murni - Terbatas Mapel Ampuan) */}
@@ -258,6 +394,9 @@ export const LoginView: React.FC = () => {
                     Guru Bhs Indonesia • Hak akses ketat: Hanya melihat & input nilai mapel ampuan saja.
                   </p>
                 </div>
+                <div className="text-[10px] font-mono bg-slate-900/90 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/30 w-fit">
+                  User: <strong>197904052008011012</strong> | Pass: <strong>guru123</strong>
+                </div>
               </button>
             </div>
           </div>
@@ -265,9 +404,215 @@ export const LoginView: React.FC = () => {
 
         {/* Footer info */}
         <div className="text-center text-[11px] text-slate-500">
-          eRaporOne SMKN 1 Labuhan Maringgai • Berbasis Kurikulum Merdeka Terintegrasi
+          eRaporOne {schoolProfile.namaSekolah} • Berbasis Kurikulum Merdeka Terintegrasi
         </div>
       </div>
+
+      {/* MODAL DAFTAR AKUN, PASSWORD & EXPORT */}
+      {isAccountModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-4xl w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col text-slate-100">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between gap-3 border-b border-slate-800 pb-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-purple-500/10 text-purple-400 rounded-xl border border-purple-500/20">
+                    <Key className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-white text-base">
+                      Daftar Akun Pengguna & Kredensial Login
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Seluruh akun login resmi {schoolProfile.namaSekolah}. Klik "Masuk Otomatis" atau bagikan ke WhatsApp.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsAccountModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Toast Alert */}
+            {modalToast && (
+              <div className="bg-emerald-600/90 text-white px-4 py-2 rounded-xl text-xs font-semibold flex items-center justify-between shadow-lg">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+                  <span>{modalToast}</span>
+                </div>
+                <button onClick={() => setModalToast(null)} className="p-1 hover:bg-emerald-700 rounded-lg">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
+            {/* Modal Toolbar: Search + Action Buttons */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="relative w-full sm:w-72">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  value={searchAcc}
+                  onChange={(e) => setSearchAcc(e.target.value)}
+                  placeholder="Cari nama guru, NIP, atau role..."
+                  className="w-full bg-slate-950 border border-slate-700 text-white rounded-xl pl-9 pr-3 py-1.5 text-xs focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+                <button
+                  type="button"
+                  onClick={handleCopyWhatsAppFormat}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-sm transition cursor-pointer active:scale-95"
+                  title="Salin seluruh format akun ke clipboard untuk dibagikan ke WhatsApp grup guru"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>📱 Salin Format WA</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => exportAccountsExcel(userAccounts, schoolProfile.namaSekolah, rombel, ekskul)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-sm transition cursor-pointer active:scale-95"
+                  title="Unduh daftar akun dalam berkas Excel (.xlsx)"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>📥 Unduh Excel (.xlsx)</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Table of Accounts */}
+            <div className="flex-1 overflow-y-auto border border-slate-800 rounded-xl">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-950/80 sticky top-0 text-slate-400 font-bold border-b border-slate-800">
+                  <tr>
+                    <th className="p-3 w-10 text-center">No</th>
+                    <th className="p-3">Nama Pengguna</th>
+                    <th className="p-3">Username / NIP</th>
+                    <th className="p-3">Password Login</th>
+                    <th className="p-3">Peran (Role)</th>
+                    <th className="p-3">Tugas Khusus</th>
+                    <th className="p-3 w-36 text-center">Aksi Cepat</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/80 bg-slate-900/40">
+                  {userAccounts
+                    .filter(u =>
+                      u.nama.toLowerCase().includes(searchAcc.toLowerCase()) ||
+                      u.username.toLowerCase().includes(searchAcc.toLowerCase()) ||
+                      u.role.toLowerCase().includes(searchAcc.toLowerCase())
+                    )
+                    .map((acc, idx) => {
+                      const pass = acc.password || (acc.role === 'admin' ? 'admin123' : 'guru123');
+                      const waliRombel = acc.rombelWaliId ? rombel.find(r => r.id === acc.rombelWaliId) : undefined;
+                      const pembina = acc.ekskulId ? ekskul.find(e => e.id === acc.ekskulId) : undefined;
+
+                      return (
+                        <tr key={acc.id} className="hover:bg-slate-800/60 transition">
+                          <td className="p-3 text-center text-slate-500">{idx + 1}</td>
+                          <td className="p-3 font-bold text-white">
+                            <div>{acc.nama}</div>
+                          </td>
+                          <td className="p-3 font-mono font-medium text-purple-300">
+                            {acc.username}
+                          </td>
+                          <td className="p-3">
+                            <div className="inline-flex items-center gap-1.5 bg-slate-950 px-2 py-1 rounded-lg border border-slate-700">
+                              <span className="font-mono text-xs font-bold text-slate-200">
+                                {showPasswordMap[acc.id] ? pass : '••••••••'}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setShowPasswordMap(prev => ({ ...prev, [acc.id]: !prev[acc.id] }))}
+                                className="text-slate-400 hover:text-white p-0.5 rounded"
+                                title={showPasswordMap[acc.id] ? 'Sembunyikan password' : 'Lihat password'}
+                              >
+                                {showPasswordMap[acc.id] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleCopyCredential(acc.id, acc.username, pass)}
+                                className="text-slate-400 hover:text-purple-300 p-0.5 rounded transition"
+                                title="Salin User & Password"
+                              >
+                                {copiedId === acc.id ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                              </button>
+                            </div>
+                          </td>
+                          <td className="p-3">
+                            {acc.role === 'admin' ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-500/20 text-purple-300 border border-purple-500/30 whitespace-nowrap">
+                                👑 Admin
+                              </span>
+                            ) : acc.role === 'kepala_sekolah' ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/30 whitespace-nowrap">
+                                🎓 Kepala Sekolah
+                              </span>
+                            ) : acc.role === 'waka_kurikulum' ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 whitespace-nowrap">
+                                📋 Waka Kurikulum
+                              </span>
+                            ) : acc.role === 'wali_kelas' ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-500/20 text-blue-300 border border-blue-500/30 whitespace-nowrap">
+                                ⭐ Wali Kelas
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 whitespace-nowrap">
+                                📚 Guru Mapel
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-3 text-[11px] text-slate-400">
+                            {waliRombel && <span className="block text-blue-300 font-semibold">Wali: {waliRombel.nama}</span>}
+                            {pembina && <span className="block text-amber-300 font-semibold">Ekskul: {pembina.nama}</span>}
+                            {!waliRombel && !pembina && <span className="text-slate-600">-</span>}
+                          </td>
+                          <td className="p-3 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleShareSingleWA(acc.nama, acc.username, pass, acc.role)}
+                                className="p-1.5 text-emerald-400 hover:bg-emerald-500/20 rounded-lg border border-emerald-500/30 transition cursor-pointer"
+                                title={`Bagikan kredensial ke WhatsApp ${acc.nama}`}
+                              >
+                                <Send className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleAutoFillAndLogin(acc.username, pass)}
+                                className="px-2.5 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-[11px] font-bold transition flex items-center gap-1 cursor-pointer shadow-sm active:scale-95"
+                                title="Langsung masuk dengan akun ini"
+                              >
+                                <Sparkles className="w-3 h-3" />
+                                <span>Masuk</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-between border-t border-slate-800 pt-3 text-xs text-slate-400">
+              <span>Total: {userAccounts.length} Akun terdaftar</span>
+              <button
+                type="button"
+                onClick={() => setIsAccountModalOpen(false)}
+                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold transition cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
