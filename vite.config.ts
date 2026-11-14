@@ -7,5 +7,10 @@ export default defineConfig({
   server: {
     port: 3000,
     open: true
+  },
+  preview: {
+    host: '127.0.0.1',
+    port: 8830,
+    allowedHosts: ['raporone.hsgserver.my.id']
   }
 })
