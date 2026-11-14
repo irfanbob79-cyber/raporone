@@ -24,7 +24,7 @@ export const PanduanGuruView: React.FC = () => {
 
   const faqs = [
     {
-      q: 'Kenapa saya tidak bisa mencetak rapor peserta didik?',
+      q: 'Kenapa saya tidak bisa mencetak rapor murid?',
       a: 'Berdasarkan regulasi resmi Kurikulum Merdeka, hanya Wali Kelas yang memiliki wewenang untuk mencetak dan mengesahkan dokumen Rapor Resmi rombel tersebut. Guru Mata Pelajaran bertugas menginput nilai dan memverifikasi deskripsi capaian pada mapel yang diampu.'
     },
     {
@@ -37,7 +37,7 @@ export const PanduanGuruView: React.FC = () => {
     },
     {
       q: 'Apakah Praktik Kerja Lapangan (PKL) wajib ada di semua tingkatan kelas?',
-      a: 'Tidak. Sesuai kurikulum SMK terkini, mata pelajaran PKL secara resmi hanya diperuntukkan bagi peserta didik Kelas XII (Fase F). Untuk kelas X dan XI, modul PKL tidak ditampilkan pada rapor.'
+      a: 'Tidak. Sesuai kurikulum SMK terkini, mata pelajaran PKL secara resmi hanya diperuntukkan bagi murid Kelas XII (Fase F). Untuk kelas X dan XI, modul PKL tidak ditampilkan pada rapor.'
     },
     {
       q: 'Bagaimana jika koneksi internet lambat saat mendekati pembagian rapor?',
@@ -130,7 +130,7 @@ export const PanduanGuruView: React.FC = () => {
           <ul className="text-xs text-slate-600 space-y-1.5 list-disc pl-4">
             <li><strong>Capaian Tertinggi:</strong> Menghasilkan kalimat apresiasi penguasaan terbaik (contoh: <em>"Menunjukkan penguasaan sangat baik dalam..."</em>).</li>
             <li><strong>Capaian Terendah:</strong> Menghasilkan rekomendasi materi yang perlu pendampingan lebih lanjut.</li>
-            <li><strong>Nama & Kelas Otomatis:</strong> Narasi sudah otomatis menyertakan nama peserta didik, kelas, dan jurusan tanpa perlu ketik berulang.</li>
+            <li><strong>Nama & Kelas Otomatis:</strong> Narasi sudah otomatis menyertakan nama murid, kelas, dan jurusan tanpa perlu ketik berulang.</li>
           </ul>
         </div>
 

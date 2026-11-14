@@ -85,7 +85,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div>
             <span className="text-[11px] font-semibold text-slate-400 block uppercase">Total Siswa</span>
             <span className="text-xl sm:text-2xl font-extrabold text-slate-900">{siswa.length}</span>
-            <span className="text-[10px] text-slate-500 block">Peserta Didik Aktif</span>
+            <span className="text-[10px] text-slate-500 block">Murid Aktif</span>
           </div>
         </div>
 

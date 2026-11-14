@@ -416,7 +416,7 @@ export const InputNilaiView: React.FC = () => {
               className="text-xs font-semibold bg-white text-slate-700 border border-blue-200 rounded-lg px-2.5 py-1.5 focus:outline-none shadow-sm cursor-pointer"
             >
               <option value="personal">Gaya Personal ("Ananda [Nama]...")</option>
-              <option value="ringkas">Gaya Standar ("Peserta didik...")</option>
+              <option value="ringkas">Gaya Standar ("Murid...")</option>
             </select>
 
             <button

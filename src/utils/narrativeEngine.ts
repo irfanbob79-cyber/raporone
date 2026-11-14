@@ -49,7 +49,7 @@ export function generateDeskripsiCapaian(ctx: NarrativeContext): string {
 
   const prefix = style === 'personal'
     ? `Ananda ${siswa.nama} (Kelas ${contextClass})`
-    : `Peserta didik`;
+    : `Murid`;
 
   if (highest.score >= 85 && lowest.score >= 82) {
     if (tpWithScores.length === 1) {

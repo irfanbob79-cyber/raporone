@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { NilaiPKL, NilaiUKK } from '../types';
 import { Briefcase, Award, Check, AlertCircle } from 'lucide-react';
+import { getPredikatPKL } from '../utils/curriculumStructure';
 
 export const PKLUKKView: React.FC<{ defaultSubTab?: 'pkl' | 'ukk' }> = ({ defaultSubTab = 'pkl' }) => {
   const { rombel, siswa, nilaiPKL, nilaiUKK, selectedRombelId, setSelectedRombelId, saveNilaiPKL, saveNilaiUKK } = useApp();
@@ -131,7 +132,21 @@ export const PKLUKKView: React.FC<{ defaultSubTab?: 'pkl' | 'ukk' }> = ({ defaul
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-slate-500 font-medium">Nilai Akhir PKL:</span>
+                      <span className="text-xs text-slate-500 font-medium">Predikat PKL:</span>
+                      <select
+                        value={pklItem.predikat || getPredikatPKL(pklItem.nilaiAkhir)}
+                        onChange={(e) => {
+                          const pred = e.target.value as 'Sangat Baik' | 'Baik' | 'Cukup' | 'Kurang';
+                          handleSavePKLItem({ ...pklItem, predikat: pred });
+                        }}
+                        className="text-xs font-bold bg-amber-50 text-amber-900 border border-amber-300 rounded-lg px-2 py-1 focus:ring-1 focus:ring-amber-500"
+                      >
+                        <option value="Sangat Baik">Sangat Baik (Baik Sekali)</option>
+                        <option value="Baik">Baik</option>
+                        <option value="Cukup">Cukup</option>
+                        <option value="Kurang">Kurang</option>
+                      </select>
+                      <span className="text-xs text-slate-500 font-medium ml-1">Nilai:</span>
                       <span className="text-sm font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200">
                         {pklItem.nilaiAkhir}
                       </span>
@@ -192,7 +207,7 @@ export const PKLUKKView: React.FC<{ defaultSubTab?: 'pkl' | 'ukk' }> = ({ defaul
                         onBlur={(e) => {
                           const val = Number(e.target.value);
                           const final = Math.round((val + pklItem.nilaiHardSkills + pklItem.nilaiKemandirian) / 3);
-                          handleSavePKLItem({ ...pklItem, nilaiSoftSkills: val, nilaiAkhir: final });
+                          handleSavePKLItem({ ...pklItem, nilaiSoftSkills: val, nilaiAkhir: final, predikat: getPredikatPKL(final) });
                         }}
                         className="w-full text-center font-bold p-1 border rounded bg-white mt-1"
                       />
@@ -206,7 +221,7 @@ export const PKLUKKView: React.FC<{ defaultSubTab?: 'pkl' | 'ukk' }> = ({ defaul
                         onBlur={(e) => {
                           const val = Number(e.target.value);
                           const final = Math.round((pklItem.nilaiSoftSkills + val + pklItem.nilaiKemandirian) / 3);
-                          handleSavePKLItem({ ...pklItem, nilaiHardSkills: val, nilaiAkhir: final });
+                          handleSavePKLItem({ ...pklItem, nilaiHardSkills: val, nilaiAkhir: final, predikat: getPredikatPKL(final) });
                         }}
                         className="w-full text-center font-bold p-1 border rounded bg-white mt-1"
                       />
@@ -220,7 +235,7 @@ export const PKLUKKView: React.FC<{ defaultSubTab?: 'pkl' | 'ukk' }> = ({ defaul
                         onBlur={(e) => {
                           const val = Number(e.target.value);
                           const final = Math.round((pklItem.nilaiSoftSkills + pklItem.nilaiHardSkills + val) / 3);
-                          handleSavePKLItem({ ...pklItem, nilaiKemandirian: val, nilaiAkhir: final });
+                          handleSavePKLItem({ ...pklItem, nilaiKemandirian: val, nilaiAkhir: final, predikat: getPredikatPKL(final) });
                         }}
                         className="w-full text-center font-bold p-1 border rounded bg-white mt-1"
                       />

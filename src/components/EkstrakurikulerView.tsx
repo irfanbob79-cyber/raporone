@@ -486,7 +486,7 @@ export const EkstrakurikulerView: React.FC = () => {
 
             <form onSubmit={handleEnrollStudent} className="space-y-3 text-xs">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Cari & Pilih Peserta Didik</label>
+                <label className="block font-semibold text-slate-700 mb-1">Cari & Pilih Murid</label>
                 <div className="relative mb-2">
                   <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-3" />
                   <input

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Printer, ChevronLeft, ChevronRight, ShieldAlert, CheckCircle2, UserCheck, Eye, EyeOff } from 'lucide-react';
+import { getCurriculumGroupsForRombel, getPredikatPKL } from '../utils/curriculumStructure';
 
 export const CetakRaporView: React.FC = () => {
   const {
@@ -41,6 +42,11 @@ export const CetakRaporView: React.FC = () => {
   const isKelasXII = currentRombel?.tingkat === 12;
   const isPKLVisible = schoolProfile.jenjang === 'SMK' && isKelasXII && showPKLSection && activePKL;
 
+  // Struktur Kurikulum & Urutan Mapel Berdasarkan Excel Rapor (Kelompok Umum, Kejuruan, Mulok)
+  const curriculumGroups = activeSiswa && currentRombel 
+    ? getCurriculumGroupsForRombel(currentRombel, activeSiswa, mapel) 
+    : [];
+
   const handlePrint = () => {
     if (!isWaliKelas) return;
     window.print();
@@ -59,7 +65,7 @@ export const CetakRaporView: React.FC = () => {
               Akses Dibatasi: Khusus Wali Kelas
             </h3>
             <p className="text-xs sm:text-sm text-amber-800 leading-relaxed">
-              Berdasarkan tata kelola Kurikulum Merdeka, <strong>hanya Wali Kelas</strong> yang memiliki wewenang untuk mencetak dokumen Rapor Resmi peserta didik.
+              Berdasarkan tata kelola Kurikulum Merdeka, <strong>hanya Wali Kelas</strong> yang memiliki wewenang untuk mencetak dokumen Rapor Resmi murid.
             </p>
             <p className="text-xs text-amber-700/90 font-medium">
               Saat ini Anda masuk dengan peran: <span className="font-bold underline uppercase">{activeRole}</span>
@@ -196,7 +202,7 @@ export const CetakRaporView: React.FC = () => {
             {/* DATA IDENTITAS SISWA (LANGSUNG DIMULAI DARI SINI) */}
             <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs py-3 border-b-2 border-black">
               <div className="flex">
-                <span className="w-36 font-semibold">Nama Peserta Didik</span>
+                <span className="w-36 font-semibold">Nama Murid</span>
                 <span className="font-bold">: {activeSiswa.nama}</span>
               </div>
               <div className="flex">
@@ -236,27 +242,42 @@ export const CetakRaporView: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-black">
-                  {mapel.map((m, idx) => {
-                    const nilai = nilaiSiswa.find(
-                      n => n.siswaId === activeSiswa.id && n.mapelId === m.id && n.rombelId === currentRombel.id
-                    );
-
-                    return (
-                      <tr key={m.id} className="align-top border-b border-black">
-                        <td className="p-2 text-center border-r border-black">{idx + 1}</td>
-                        <td className="p-2 font-medium border-r border-black">
-                          <div>{m.nama}</div>
-                          <div className="text-[10px] text-slate-500 print:text-black font-mono">{m.kelompok}</div>
-                        </td>
-                        <td className="p-2 text-center font-bold text-sm border-r border-black">
-                          {nilai?.nilaiAkhir || '-'}
-                        </td>
-                        <td className="p-2 text-[11px] leading-relaxed">
-                          {nilai?.deskripsiCapaian || 'Peserta didik telah menuntaskan capaian pembelajaran pada mata pelajaran ini.'}
+                  {curriculumGroups.map((group) => (
+                    <React.Fragment key={group.groupTitle}>
+                      <tr className="bg-slate-100 print:bg-slate-200 font-bold border-y border-black">
+                        <td colSpan={4} className="p-1.5 px-2 text-xs uppercase tracking-wide bg-slate-100 print:bg-slate-200">
+                          {group.groupTitle}
                         </td>
                       </tr>
-                    );
-                  })}
+                      {group.items.map((item) => {
+                        const matchedMapel = item.matchedMapelId
+                          ? mapel.find(m => m.id === item.matchedMapelId)
+                          : mapel.find(m => m.nama.toLowerCase() === item.nama.toLowerCase());
+
+                        const nilai = nilaiSiswa.find(
+                          n => n.siswaId === activeSiswa.id && (
+                            (item.matchedMapelId && n.mapelId === item.matchedMapelId) ||
+                            (matchedMapel && n.mapelId === matchedMapel.id)
+                          )
+                        );
+
+                        return (
+                          <tr key={group.groupTitle + item.nama + item.no} className="align-top border-b border-black">
+                            <td className="p-2 text-center border-r border-black">{item.no}</td>
+                            <td className="p-2 font-medium border-r border-black">
+                              <div>{item.nama}</div>
+                            </td>
+                            <td className="p-2 text-center font-bold text-sm border-r border-black">
+                              {nilai?.nilaiAkhir || '-'}
+                            </td>
+                            <td className="p-2 text-[11px] leading-relaxed">
+                              {nilai?.deskripsiCapaian || `Murid telah menuntaskan capaian pembelajaran pada mata pelajaran ${item.nama}.`}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </React.Fragment>
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -273,7 +294,7 @@ export const CetakRaporView: React.FC = () => {
                       <th className="p-2 border-r border-black text-left">Mitra DUDI / Industri</th>
                       <th className="p-2 border-r border-black">Lokasi</th>
                       <th className="p-2 border-r border-black">Lamanya</th>
-                      <th className="p-2 border-r border-black">Nilai</th>
+                      <th className="p-2 border-r border-black">Predikat / Nilai</th>
                       <th className="p-2 text-left">Keterangan / Catatan DUDI</th>
                     </tr>
                   </thead>
@@ -282,7 +303,16 @@ export const CetakRaporView: React.FC = () => {
                       <td className="p-2 font-semibold border-r border-black text-left">{activePKL.mitraDudi}</td>
                       <td className="p-2 border-r border-black">{activePKL.lokasi}</td>
                       <td className="p-2 border-r border-black">{activePKL.durasiBulan} Bulan</td>
-                      <td className="p-2 font-bold border-r border-black text-sm">{activePKL.nilaiAkhir}</td>
+                      <td className="p-2 border-r border-black">
+                        <div className="font-bold text-sm text-black">
+                          {activePKL.predikat || getPredikatPKL(activePKL.nilaiAkhir)}
+                        </div>
+                        {activePKL.nilaiAkhir > 0 && (
+                          <div className="text-[10px] text-slate-500 print:text-black">
+                            ({activePKL.nilaiAkhir})
+                          </div>
+                        )}
+                      </td>
                       <td className="p-2 text-left text-[11px]">{activePKL.catatanDudi}</td>
                     </tr>
                   </tbody>

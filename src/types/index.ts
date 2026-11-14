@@ -160,6 +160,7 @@ export interface NilaiPKL {
   nilaiHardSkills: number;
   nilaiKemandirian: number;
   nilaiAkhir: number;
+  predikat?: 'Sangat Baik' | 'Baik' | 'Cukup' | 'Kurang';
   catatanDudi: string;
   kehadiranSakit: number;
   kehadiranIzin: number;
