@@ -52,20 +52,18 @@ export function downloadTemplateNilai(
   siswaList: Siswa[],
   tpList: TujuanPembelajaran[]
 ) {
-  const headers = ['No', 'NISN', 'Nama Siswa'];
+  const headers = ['No', 'NISN', 'Nama Siswa', 'Nilai Rapor (0-100)'];
   tpList.forEach((tp) => {
-    headers.push(`${tp.kodeTp} (${tp.deskripsi.slice(0, 25)}...)`);
+    headers.push(`${tp.kodeTp}: ${tp.deskripsi.slice(0, 25)}... (1=Tercapai, 0=Belum)`);
   });
-  headers.push('Nilai SAS (Akhir Semester)');
   headers.push('Deskripsi Khusus Guru (Opsional)');
 
   const rows: any[][] = [headers];
 
   siswaList.forEach((siswa, index) => {
-    const row = [index + 1, siswa.nisn, siswa.nama];
-    // Fill empty cells for TPs
-    tpList.forEach(() => row.push(80)); // default placeholder
-    row.push(80); // SAS default
+    const row: any[] = [index + 1, siswa.nisn, siswa.nama, 80];
+    // Default 1 (tercapai) for TPs
+    tpList.forEach(() => row.push(1));
     row.push(''); // custom description
     rows.push(row);
   });

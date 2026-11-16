@@ -114,9 +114,10 @@ export interface NilaiSiswa {
   rombelId: string;
   mapelId: string;
   semester: string;
-  nilaiTp: Record<string, number>; // { [tpId]: score }
-  nilaiSAS: number; // Sumatif Akhir Semester
-  nilaiAkhir: number;
+  nilaiAkhir: number; // SATU JENIS NILAI RAPOR YANG DI-INPUT (0 - 100)
+  tpTercapaiIds?: string[]; // Daftar ID TP yang dipilih / diceklis untuk siswa ini
+  nilaiTp?: Record<string, number>; // Opsional untuk kompatibilitas data lama
+  nilaiSAS?: number; // Opsional untuk kompatibilitas data lama
   deskripsiCapaian: string;
   deskripsiIsCustom: boolean;
 }

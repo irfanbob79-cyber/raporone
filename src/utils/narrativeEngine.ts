@@ -7,41 +7,25 @@ export interface NarrativeContext {
   jurusan?: Jurusan;
   jenjang: SchoolLevel;
   tujuanPembelajaranList: TujuanPembelajaran[];
-  nilaiTp: Record<string, number>;
+  nilaiAkhir?: number; // SATU JENIS NILAI YANG DI-INPUT GURU (0 - 100)
+  tpTercapaiIds?: string[]; // Daftar ID TP yang dicapai / diceklis murid
+  nilaiTp?: Record<string, number>; // Fallback kompatibilitas data lama
   style?: 'personal' | 'ringkas';
 }
 
 export function generateDeskripsiCapaian(ctx: NarrativeContext): string {
-  const { siswa, rombel, mapel, jurusan, jenjang, tujuanPembelajaranList, nilaiTp, style = 'personal' } = ctx;
-
-  const validEntries = Object.entries(nilaiTp).filter(([_, score]) => typeof score === 'number' && !isNaN(score));
-  
-  if (validEntries.length === 0 || tujuanPembelajaranList.length === 0) {
-    return 'Belum ada data capaian tujuan pembelajaran.';
-  }
-
-  const tpWithScores = validEntries.map(([tpId, score]) => {
-    const tp = tujuanPembelajaranList.find(t => t.id === tpId);
-    return {
-      tpId,
-      score,
-      deskripsi: tp ? tp.deskripsi.trim() : 'kompetensi materi'
-    };
-  });
-
-  tpWithScores.sort((a, b) => b.score - a.score);
-
-  const highest = tpWithScores[0];
-  const lowest = tpWithScores[tpWithScores.length - 1];
-
-  const cleanTpDesc = (desc: string) => {
-    let clean = desc.charAt(0).toLowerCase() + desc.slice(1);
-    if (clean.endsWith('.')) clean = clean.slice(0, -1);
-    return clean;
-  };
-
-  const highestDesc = cleanTpDesc(highest.deskripsi);
-  const lowestDesc = cleanTpDesc(lowest.deskripsi);
+  const {
+    siswa,
+    rombel,
+    mapel,
+    jurusan,
+    jenjang,
+    tujuanPembelajaranList,
+    nilaiAkhir = 80,
+    tpTercapaiIds,
+    nilaiTp,
+    style = 'personal'
+  } = ctx;
 
   const contextClass = jenjang === 'SMK' && jurusan 
     ? `${rombel.nama} - ${jurusan.nama}` 
@@ -51,29 +35,80 @@ export function generateDeskripsiCapaian(ctx: NarrativeContext): string {
     ? `Ananda ${siswa.nama} (Kelas ${contextClass})`
     : `Murid`;
 
-  if (highest.score >= 85 && lowest.score >= 82) {
-    if (tpWithScores.length === 1) {
-      return `${prefix} menunjukkan penguasaan yang sangat istimewa dalam ${highestDesc} pada mata pelajaran ${mapel.nama}.`;
+  if (tujuanPembelajaranList.length === 0) {
+    return `${prefix} telah menuntaskan pembelajaran pada mata pelajaran ${mapel.nama} dengan capaian nilai ${nilaiAkhir}.`;
+  }
+
+  // Tentukan daftar TP yang tercapai (achieved) dan yang belum tercapai (unachieved)
+  let achievedTps: TujuanPembelajaran[] = [];
+  let unachievedTps: TujuanPembelajaran[] = [];
+
+  if (Array.isArray(tpTercapaiIds)) {
+    // Mode Utama: Berdasarkan checklist TP yang dipilih oleh guru
+    achievedTps = tujuanPembelajaranList.filter(t => tpTercapaiIds.includes(t.id));
+    unachievedTps = tujuanPembelajaranList.filter(t => !tpTercapaiIds.includes(t.id));
+  } else if (nilaiTp && Object.keys(nilaiTp).length > 0) {
+    // Mode Fallback: Berdasarkan skor nilaiTp lama (kktp default 75)
+    achievedTps = tujuanPembelajaranList.filter(t => (nilaiTp[t.id] ?? 0) >= (mapel.kktp || 75));
+    unachievedTps = tujuanPembelajaranList.filter(t => (nilaiTp[t.id] ?? 0) < (mapel.kktp || 75));
+  } else {
+    // Default jika belum ada data checklist: jika nilai >= kktp anggap semua tercapai
+    const threshold = mapel.kktp || 75;
+    if (nilaiAkhir >= threshold) {
+      achievedTps = [...tujuanPembelajaranList];
+      unachievedTps = [];
+    } else {
+      achievedTps = tujuanPembelajaranList.slice(0, 1);
+      unachievedTps = tujuanPembelajaranList.slice(1);
     }
-    return `${prefix} menunjukkan penguasaan yang sangat baik dalam ${highestDesc} serta penguasaan yang optimal dalam ${lowestDesc} pada mata pelajaran ${mapel.nama}.`;
   }
 
-  if (highest.score >= 78 && lowest.score < 75) {
-    return `${prefix} menunjukkan penguasaan yang sangat baik dalam ${highestDesc} pada mata pelajaran ${mapel.nama}. Perlu peningkatan dan pendampingan lebih lanjut dalam ${lowestDesc}.`;
-  }
+  const cleanTpDesc = (desc: string) => {
+    let clean = desc.trim();
+    clean = clean.charAt(0).toLowerCase() + clean.slice(1);
+    if (clean.endsWith('.')) clean = clean.slice(0, -1);
+    return clean;
+  };
 
-  if (highest.score >= 80 && lowest.score >= 75) {
-    if (highest.score - lowest.score <= 5) {
-      return `${prefix} menunjukkan capaian belajar yang stabil dan baik pada seluruh tujuan pembelajaran mata pelajaran ${mapel.nama}, terutama dalam ${highestDesc}.`;
+  const formatTpList = (list: TujuanPembelajaran[]) => {
+    if (list.length === 0) return '';
+    if (list.length === 1) return cleanTpDesc(list[0].deskripsi);
+    if (list.length === 2) return `${cleanTpDesc(list[0].deskripsi)} dan ${cleanTpDesc(list[1].deskripsi)}`;
+    const allExceptLast = list.slice(0, -1).map(t => cleanTpDesc(t.deskripsi)).join(', ');
+    return `${allExceptLast}, serta ${cleanTpDesc(list[list.length - 1].deskripsi)}`;
+  };
+
+  // Case 1: Seluruh TP Tercapai / Dikuasai
+  if (achievedTps.length === tujuanPembelajaranList.length) {
+    if (nilaiAkhir >= 85) {
+      if (achievedTps.length === 1) {
+        return `${prefix} menunjukkan penguasaan yang sangat istimewa dalam ${formatTpList(achievedTps)} pada mata pelajaran ${mapel.nama}.`;
+      }
+      return `${prefix} menunjukkan penguasaan yang sangat baik dalam seluruh tujuan pembelajaran, meliputi ${formatTpList(achievedTps)} pada mata pelajaran ${mapel.nama}.`;
     }
-    return `${prefix} menunjukkan penguasaan yang baik dalam ${highestDesc} pada mata pelajaran ${mapel.nama}, serta cukup terampil dalam ${lowestDesc}.`;
+    if (nilaiAkhir >= (mapel.kktp || 75)) {
+      return `${prefix} menunjukkan penguasaan yang baik dalam seluruh tujuan pembelajaran, meliputi ${formatTpList(achievedTps)} pada mata pelajaran ${mapel.nama}.`;
+    }
+    return `${prefix} menunjukkan penguasaan yang cukup pada seluruh tujuan pembelajaran mata pelajaran ${mapel.nama}, namun disarankan untuk terus berlatih mandiri.`;
   }
 
-  if (highest.score < 75 && lowest.score < 70) {
-    return `${prefix} perlu bimbingan dan dorongan belajar yang lebih intensif dalam menguasai kompetensi mata pelajaran ${mapel.nama}, khususnya terkait ${lowestDesc}.`;
+  // Case 2: Sebagian TP Tercapai dan Sebagian Belum Tercapai / Perlu Peningkatan
+  if (achievedTps.length > 0 && unachievedTps.length > 0) {
+    const achievedText = formatTpList(achievedTps);
+    const unachievedText = formatTpList(unachievedTps);
+
+    if (nilaiAkhir >= 85) {
+      return `${prefix} menunjukkan penguasaan yang sangat baik dalam ${achievedText} pada mata pelajaran ${mapel.nama}. Perlu pendampingan lebih lanjut dalam ${unachievedText}.`;
+    }
+    if (nilaiAkhir >= (mapel.kktp || 75)) {
+      return `${prefix} menunjukkan penguasaan yang baik dalam ${achievedText} pada mata pelajaran ${mapel.nama}. Perlu peningkatan dan latihan dalam ${unachievedText}.`;
+    }
+    return `${prefix} cukup menguasai kompetensi ${achievedText} pada mata pelajaran ${mapel.nama}. Perlu bimbingan intensif dan perbaikan dalam ${unachievedText}.`;
   }
 
-  return `${prefix} menunjukkan penguasaan yang cukup baik dalam ${highestDesc} pada mata pelajaran ${mapel.nama}. Perlu latihan tambahan dalam ${lowestDesc}.`;
+  // Case 3: Belum Ada TP yang Tercapai / Seluruh TP Perlu Bimbingan
+  const unachievedAll = formatTpList(unachievedTps);
+  return `${prefix} perlu bimbingan intensif dan dorongan belajar dari guru serta orang tua dalam menguasai kompetensi mata pelajaran ${mapel.nama}, khususnya terkait ${unachievedAll || 'tujuan pembelajaran yang ditetapkan'}.`;
 }
 
 // GENERATE OTOMATIS CATATAN WALI KELAS

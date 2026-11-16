@@ -11,7 +11,9 @@ import {
   Smartphone,
   Monitor,
   AlertCircle,
-  UserCheck
+  UserCheck,
+  CheckSquare,
+  CheckCheck
 } from 'lucide-react';
 
 export const InputNilaiView: React.FC = () => {
@@ -28,7 +30,6 @@ export const InputNilaiView: React.FC = () => {
     activeRole,
     currentUser,
     currentGuruId,
-    setCurrentGuruId,
     selectedRombelId,
     setSelectedRombelId,
     selectedMapelId,
@@ -91,13 +92,24 @@ export const InputNilaiView: React.FC = () => {
       );
 
       if (existing) {
-        initial[s.id] = { ...existing };
-      } else {
-        const defaultNilaiTp: Record<string, number> = {};
-        currentTp.forEach(tp => {
-          defaultNilaiTp[tp.id] = 80;
-        });
+        let initialTpIds: string[] = [];
+        if (Array.isArray(existing.tpTercapaiIds)) {
+          initialTpIds = existing.tpTercapaiIds;
+        } else if (existing.nilaiTp && Object.keys(existing.nilaiTp).length > 0) {
+          initialTpIds = currentTp.filter(t => (existing.nilaiTp![t.id] ?? 0) >= (currentMapel.kktp || 75)).map(t => t.id);
+        } else {
+          initialTpIds = (existing.nilaiAkhir >= (currentMapel.kktp || 75))
+            ? currentTp.map(t => t.id)
+            : currentTp.slice(0, Math.max(1, currentTp.length - 1)).map(t => t.id);
+        }
 
+        initial[s.id] = {
+          ...existing,
+          nilaiAkhir: existing.nilaiAkhir ?? 80,
+          tpTercapaiIds: initialTpIds
+        };
+      } else {
+        const defaultTpIds = currentTp.map(t => t.id);
         const initialDeskripsi = generateDeskripsiCapaian({
           siswa: s,
           rombel: currentRombel,
@@ -105,7 +117,8 @@ export const InputNilaiView: React.FC = () => {
           jurusan: currentJurusan,
           jenjang: schoolProfile.jenjang,
           tujuanPembelajaranList: currentTp,
-          nilaiTp: defaultNilaiTp,
+          nilaiAkhir: 80,
+          tpTercapaiIds: defaultTpIds,
           style: narrativeStyle
         });
 
@@ -115,9 +128,8 @@ export const InputNilaiView: React.FC = () => {
           rombelId: currentRombel.id,
           mapelId: currentMapel.id,
           semester: schoolProfile.semesterAktif,
-          nilaiTp: defaultNilaiTp,
-          nilaiSAS: 80,
           nilaiAkhir: 80,
+          tpTercapaiIds: defaultTpIds,
           deskripsiCapaian: initialDeskripsi,
           deskripsiIsCustom: false
         };
@@ -138,49 +150,201 @@ export const InputNilaiView: React.FC = () => {
     }
   }, [draftNilai]);
 
-  // Handle score change for TP
-  const handleScoreChange = (siswaId: string, tpId: string, value: string) => {
+  // Handle Nilai Rapor (SATU NILAI UTAMA YANG DI-INPUT GURU)
+  const handleNilaiAkhirChange = (siswaId: string, value: string) => {
     const num = Math.min(100, Math.max(0, Number(value) || 0));
     setDraftNilai(prev => {
       const current = prev[siswaId];
       if (!current) return prev;
 
-      const updatedTp = { ...current.nilaiTp, [tpId]: num };
-      const tpValues = Object.values(updatedTp);
-      const avgTp = tpValues.length > 0 ? tpValues.reduce((a, b) => a + b, 0) / tpValues.length : num;
-      const finalScore = Math.round((avgTp * 0.6) + (current.nilaiSAS * 0.4));
+      const s = currentSiswa.find(item => item.id === siswaId);
+      let nextDeskripsi = current.deskripsiCapaian;
+      if (!current.deskripsiIsCustom && s && currentRombel && currentMapel) {
+        nextDeskripsi = generateDeskripsiCapaian({
+          siswa: s,
+          rombel: currentRombel,
+          mapel: currentMapel,
+          jurusan: currentJurusan,
+          jenjang: schoolProfile.jenjang,
+          tujuanPembelajaranList: currentTp,
+          nilaiAkhir: num,
+          tpTercapaiIds: current.tpTercapaiIds || [],
+          style: narrativeStyle
+        });
+      }
 
       return {
         ...prev,
         [siswaId]: {
           ...current,
-          nilaiTp: updatedTp,
-          nilaiAkhir: finalScore
+          nilaiAkhir: num,
+          deskripsiCapaian: nextDeskripsi
         }
       };
     });
   };
 
-  // Handle SAS score change
-  const handleSASChange = (siswaId: string, value: string) => {
-    const num = Math.min(100, Math.max(0, Number(value) || 0));
+  // Handle Checklist TP per Siswa
+  const handleToggleTp = (siswaId: string, tpId: string) => {
     setDraftNilai(prev => {
       const current = prev[siswaId];
       if (!current) return prev;
 
-      const tpValues = Object.values(current.nilaiTp);
-      const avgTp = tpValues.length > 0 ? tpValues.reduce((a, b) => a + b, 0) / tpValues.length : num;
-      const finalScore = Math.round((avgTp * 0.6) + (num * 0.4));
+      const currentTps = current.tpTercapaiIds || [];
+      const isChecked = currentTps.includes(tpId);
+      const updatedTps = isChecked
+        ? currentTps.filter(id => id !== tpId)
+        : [...currentTps, tpId];
+
+      const s = currentSiswa.find(item => item.id === siswaId);
+      let nextDeskripsi = current.deskripsiCapaian;
+      if (!current.deskripsiIsCustom && s && currentRombel && currentMapel) {
+        nextDeskripsi = generateDeskripsiCapaian({
+          siswa: s,
+          rombel: currentRombel,
+          mapel: currentMapel,
+          jurusan: currentJurusan,
+          jenjang: schoolProfile.jenjang,
+          tujuanPembelajaranList: currentTp,
+          nilaiAkhir: current.nilaiAkhir,
+          tpTercapaiIds: updatedTps,
+          style: narrativeStyle
+        });
+      }
 
       return {
         ...prev,
         [siswaId]: {
           ...current,
-          nilaiSAS: num,
-          nilaiAkhir: finalScore
+          tpTercapaiIds: updatedTps,
+          deskripsiCapaian: nextDeskripsi
         }
       };
     });
+  };
+
+  // Handle Pilih / Batal Semua TP untuk 1 Siswa
+  const handleSelectAllTpForStudent = (siswaId: string) => {
+    setDraftNilai(prev => {
+      const current = prev[siswaId];
+      if (!current) return prev;
+
+      const currentTps = current.tpTercapaiIds || [];
+      const allSelected = currentTp.length > 0 && currentTps.length === currentTp.length;
+      const updatedTps = allSelected ? [] : currentTp.map(t => t.id);
+
+      const s = currentSiswa.find(item => item.id === siswaId);
+      let nextDeskripsi = current.deskripsiCapaian;
+      if (!current.deskripsiIsCustom && s && currentRombel && currentMapel) {
+        nextDeskripsi = generateDeskripsiCapaian({
+          siswa: s,
+          rombel: currentRombel,
+          mapel: currentMapel,
+          jurusan: currentJurusan,
+          jenjang: schoolProfile.jenjang,
+          tujuanPembelajaranList: currentTp,
+          nilaiAkhir: current.nilaiAkhir,
+          tpTercapaiIds: updatedTps,
+          style: narrativeStyle
+        });
+      }
+
+      return {
+        ...prev,
+        [siswaId]: {
+          ...current,
+          tpTercapaiIds: updatedTps,
+          deskripsiCapaian: nextDeskripsi
+        }
+      };
+    });
+  };
+
+  // Handle Centang / Batal 1 TP untuk Seluruh Murid di Kelas (Quick Action Header)
+  const handleToggleTpForWholeClass = (tpId: string) => {
+    setDraftNilai(prev => {
+      const allChecked = currentSiswa.every(s => (prev[s.id]?.tpTercapaiIds || []).includes(tpId));
+      const next = { ...prev };
+
+      currentSiswa.forEach(s => {
+        const curr = next[s.id];
+        if (curr) {
+          const currentTps = curr.tpTercapaiIds || [];
+          const updatedTps = allChecked
+            ? currentTps.filter(id => id !== tpId)
+            : currentTps.includes(tpId) ? currentTps : [...currentTps, tpId];
+
+          let nextDeskripsi = curr.deskripsiCapaian;
+          if (!curr.deskripsiIsCustom && currentRombel && currentMapel) {
+            nextDeskripsi = generateDeskripsiCapaian({
+              siswa: s,
+              rombel: currentRombel,
+              mapel: currentMapel,
+              jurusan: currentJurusan,
+              jenjang: schoolProfile.jenjang,
+              tujuanPembelajaranList: currentTp,
+              nilaiAkhir: curr.nilaiAkhir,
+              tpTercapaiIds: updatedTps,
+              style: narrativeStyle
+            });
+          }
+
+          next[s.id] = {
+            ...curr,
+            tpTercapaiIds: updatedTps,
+            deskripsiCapaian: nextDeskripsi
+          };
+        }
+      });
+
+      return next;
+    });
+  };
+
+  // Handle Ceklist Otomatis Berdasarkan KKTP
+  const handleAutoCheckByKKTP = () => {
+    const kktpThreshold = currentMapel?.kktp || 75;
+    setDraftNilai(prev => {
+      const next = { ...prev };
+      currentSiswa.forEach(s => {
+        const curr = next[s.id];
+        if (curr) {
+          let updatedTps: string[] = [];
+          if (curr.nilaiAkhir >= kktpThreshold) {
+            updatedTps = currentTp.map(t => t.id);
+          } else if (curr.nilaiAkhir >= 65) {
+            updatedTps = currentTp.slice(0, Math.max(1, currentTp.length - 1)).map(t => t.id);
+          } else {
+            updatedTps = currentTp.slice(0, 1).map(t => t.id);
+          }
+
+          let nextDeskripsi = curr.deskripsiCapaian;
+          if (!curr.deskripsiIsCustom && currentRombel && currentMapel) {
+            nextDeskripsi = generateDeskripsiCapaian({
+              siswa: s,
+              rombel: currentRombel,
+              mapel: currentMapel,
+              jurusan: currentJurusan,
+              jenjang: schoolProfile.jenjang,
+              tujuanPembelajaranList: currentTp,
+              nilaiAkhir: curr.nilaiAkhir,
+              tpTercapaiIds: updatedTps,
+              style: narrativeStyle
+            });
+          }
+
+          next[s.id] = {
+            ...curr,
+            tpTercapaiIds: updatedTps,
+            deskripsiCapaian: nextDeskripsi
+          };
+        }
+      });
+      return next;
+    });
+
+    setSaveStatus(`📋 Berhasil menyesuaikan checklist TP otomatis berdasarkan KKTP (${kktpThreshold})!`);
+    setTimeout(() => setSaveStatus(''), 4000);
   };
 
   // Handle custom description edit
@@ -212,7 +376,8 @@ export const InputNilaiView: React.FC = () => {
       jurusan: currentJurusan,
       jenjang: schoolProfile.jenjang,
       tujuanPembelajaranList: currentTp,
-      nilaiTp: curr.nilaiTp,
+      nilaiAkhir: curr.nilaiAkhir,
+      tpTercapaiIds: curr.tpTercapaiIds || [],
       style: narrativeStyle
     });
 
@@ -242,7 +407,8 @@ export const InputNilaiView: React.FC = () => {
             jurusan: currentJurusan,
             jenjang: schoolProfile.jenjang,
             tujuanPembelajaranList: currentTp,
-            nilaiTp: curr.nilaiTp,
+            nilaiAkhir: curr.nilaiAkhir,
+            tpTercapaiIds: curr.tpTercapaiIds || [],
             style: narrativeStyle
           });
           next[s.id] = {
@@ -255,7 +421,7 @@ export const InputNilaiView: React.FC = () => {
       return next;
     });
 
-    setSaveStatus('⚡ Berhasil membuat deskripsi otomatis untuk seluruh siswa!');
+    setSaveStatus('⚡ Berhasil membuat deskripsi capaian otomatis untuk seluruh murid!');
     setTimeout(() => setSaveStatus(''), 4000);
   };
 
@@ -303,7 +469,7 @@ export const InputNilaiView: React.FC = () => {
             {/* Pilih Rombel Ampuan */}
             <div>
               <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-                Rombel / Kelas Ampuan
+                Rombel / Kelas
               </label>
               {availableRombel.length === 0 ? (
                 <div className="text-xs text-rose-600 italic py-2">Belum ada kelas yang diampu</div>
@@ -323,7 +489,7 @@ export const InputNilaiView: React.FC = () => {
             {/* Pilih Mapel Ampuan */}
             <div>
               <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-                Mata Pelajaran Ampuan
+                Mata Pelajaran
               </label>
               {availableMapel.length === 0 ? (
                 <div className="text-xs text-rose-600 italic py-2">Tidak ada mapel di kelas ini</div>
@@ -365,7 +531,7 @@ export const InputNilaiView: React.FC = () => {
                   className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg transition ${
                     viewMode === 'desktop' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'
                   }`}
-                  title="Mode Grid Spreadsheet (Laptop / Tab)"
+                  title="Mode Grid Spreadsheet (Laptop / Layar Lebar)"
                 >
                   <Monitor className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Grid Excel</span>
@@ -419,19 +585,32 @@ export const InputNilaiView: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-xs text-blue-950 uppercase tracking-wider">
-                  Smart Narrative Engine
+                  Skema 1 Nilai + Ceklist Tujuan Pembelajaran (TP)
                 </span>
-                <span className="text-[10px] bg-blue-200 text-blue-800 font-bold px-1.5 py-0.5 rounded">
-                  Otomatis & Bisa Diedit Bebas
+                <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded-md border border-emerald-300">
+                  Kurikulum Merdeka
                 </span>
               </div>
               <p className="text-xs text-blue-800/90 mt-0.5">
-                Menghasilkan deskripsi capaian berbasis TP Tertinggi & Terendah, nama siswa, kelas, dan mapel.
+                Cukup input <strong>1 Nilai Rapor</strong>. Centang TP yang dikuasai tiap murid (TP bisa berbeda tiap murid). Narasi capaian otomatis tersusun rapi.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-end sm:self-auto">
+          <div className="flex flex-wrap items-center gap-2 self-end sm:self-auto">
+            {/* Quick Action: Ceklist Otomatis Sesuai KKTP */}
+            {currentTp.length > 0 && (
+              <button
+                type="button"
+                onClick={handleAutoCheckByKKTP}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-blue-300 hover:bg-blue-50 text-blue-900 rounded-lg text-xs font-bold shadow-sm transition active:scale-95 whitespace-nowrap"
+                title={`Pilih otomatis TP berdasarkan nilai murid terhadap KKTP (${currentMapel?.kktp || 75})`}
+              >
+                <CheckSquare className="w-3.5 h-3.5 text-blue-600" />
+                <span>Ceklist Otomatis (KKTP)</span>
+              </button>
+            )}
+
             {/* Style Selector */}
             <select
               value={narrativeStyle}
@@ -447,7 +626,7 @@ export const InputNilaiView: React.FC = () => {
               className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg text-xs font-bold shadow-md shadow-blue-600/20 transition active:scale-95 whitespace-nowrap"
             >
               <Sparkles className="w-3.5 h-3.5" />
-              ⚡ Generate Semua Siswa
+              <span>⚡ Generate Semua Murid</span>
             </button>
           </div>
         </div>
@@ -466,7 +645,7 @@ export const InputNilaiView: React.FC = () => {
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-amber-800 text-xs flex items-center justify-between">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
-            <span>Mata pelajaran ini belum memiliki Tujuan Pembelajaran (TP). Nilai akhir dihitung dari SAS.</span>
+            <span>Mata pelajaran ini belum memiliki Tujuan Pembelajaran (TP). Silakan tambahkan TP pada menu Tujuan Pembelajaran agar checklist TP dapat aktif.</span>
           </div>
         </div>
       )}
@@ -479,25 +658,39 @@ export const InputNilaiView: React.FC = () => {
               <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
                 <tr>
                   <th className="p-3 w-10 text-center border-r border-slate-200">No</th>
-                  <th className="p-3 min-w-[180px] border-r border-slate-200">Nama Siswa</th>
-                  <th className="p-3 w-16 text-center border-r border-slate-200">NISN</th>
+                  <th className="p-3 min-w-[190px] border-r border-slate-200">Nama Murid</th>
+                  
+                  {/* KOLOM 1 NILAI YANG DI-INPUT */}
+                  <th className="p-3 w-28 text-center border-r border-slate-200 bg-amber-50/80 font-extrabold text-amber-950">
+                    <div>Nilai Rapor</div>
+                    <div className="text-[10px] text-amber-700 font-normal">(Input 0-100)</div>
+                  </th>
+
+                  {/* KOLOM CHECKLIST TP YANG DAPAT BERBEDA TIAP MURID */}
                   {currentTp.map((tp) => (
-                    <th key={tp.id} className="p-2 w-20 text-center border-r border-slate-200 bg-blue-50/50">
-                      <div className="font-bold text-blue-900">{tp.kodeTp}</div>
-                      <div className="text-[10px] text-slate-500 font-normal truncate max-w-[80px]" title={tp.deskripsi}>
-                        {tp.deskripsi.substring(0, 16)}...
+                    <th key={tp.id} className="p-2.5 min-w-[140px] max-w-[200px] border-r border-slate-200 bg-blue-50/70">
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <span className="font-extrabold text-blue-950 text-xs">{tp.kodeTp}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleTpForWholeClass(tp.id)}
+                          className="text-[9px] bg-blue-100 hover:bg-blue-200 text-blue-800 px-1.5 py-0.5 rounded font-bold transition whitespace-nowrap cursor-pointer"
+                          title={`Centang / Batal Semua Murid di Kelas untuk ${tp.kodeTp}`}
+                        >
+                          Pilih Semua
+                        </button>
+                      </div>
+                      <div className="text-[10px] text-slate-600 font-normal leading-tight line-clamp-2" title={tp.deskripsi}>
+                        {tp.deskripsi}
                       </div>
                     </th>
                   ))}
-                  <th className="p-3 w-20 text-center border-r border-slate-200 bg-indigo-50/50 font-bold text-indigo-900">
-                    SAS (Tes)
-                  </th>
-                  <th className="p-3 w-20 text-center border-r border-slate-200 bg-amber-50/50 font-bold text-amber-900">
-                    Nilai Akhir
-                  </th>
-                  <th className="p-3 min-w-[280px]">
+
+                  {/* KOLOM DESKRIPSI CAPAIAN KOMPETENSI */}
+                  <th className="p-3 min-w-[320px]">
                     <div className="flex items-center justify-between">
-                      <span>Deskripsi Capaian Kompetensi (Bisa Diedit Bebas)</span>
+                      <span className="font-bold text-slate-800">Deskripsi Capaian Kompetensi (Rapor)</span>
+                      <span className="text-[10px] text-slate-400 font-normal">Tersusun otomatis dari nilai & checklist TP</span>
                     </div>
                   </th>
                 </tr>
@@ -505,88 +698,117 @@ export const InputNilaiView: React.FC = () => {
               <tbody className="divide-y divide-slate-100">
                 {currentSiswa.map((s, index) => {
                   const curr = draftNilai[s.id] || {
-                    nilaiTp: {},
-                    nilaiSAS: 80,
                     nilaiAkhir: 80,
+                    tpTercapaiIds: currentTp.map(t => t.id),
                     deskripsiCapaian: '',
                     deskripsiIsCustom: false
                   };
+
+                  const allTpChecked = currentTp.length > 0 && (curr.tpTercapaiIds || []).length === currentTp.length;
 
                   return (
                     <tr key={s.id} className="hover:bg-blue-50/20 transition group">
                       <td className="p-3 text-center font-mono text-slate-400 border-r border-slate-100">
                         {index + 1}
                       </td>
+
+                      {/* Info Siswa */}
                       <td className="p-3 font-semibold text-slate-800 border-r border-slate-100">
-                        <div>{s.nama}</div>
-                        <div className="text-[10px] text-slate-400 font-mono">NIS: {s.nis}</div>
-                      </td>
-                      <td className="p-3 text-center font-mono text-slate-500 text-[11px] border-r border-slate-100">
-                        {s.nisn}
+                        <div className="font-bold text-slate-900">{s.nama}</div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[10px] text-slate-400 font-mono">NISN: {s.nisn}</span>
+                          {currentTp.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => handleSelectAllTpForStudent(s.id)}
+                              className="text-[10px] text-blue-600 hover:text-blue-800 font-bold hover:underline"
+                            >
+                              {allTpChecked ? 'Batal Semua TP' : '✓ Pilih Semua TP'}
+                            </button>
+                          )}
+                        </div>
                       </td>
 
-                      {/* TP Inputs */}
-                      {currentTp.map(tp => (
-                        <td key={tp.id} className="p-1.5 text-center border-r border-slate-100 bg-blue-50/10">
+                      {/* SATU INPUT NILAI RAPOR */}
+                      <td className="p-2 text-center border-r border-slate-100 bg-amber-50/20">
+                        <div className="flex flex-col items-center justify-center">
                           <input
                             type="number"
                             min="0"
                             max="100"
-                            value={curr.nilaiTp[tp.id] ?? ''}
-                            onChange={(e) => handleScoreChange(s.id, tp.id, e.target.value)}
-                            className="w-14 text-center py-1.5 px-1 bg-white border border-slate-200 rounded-lg font-bold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            value={curr.nilaiAkhir ?? ''}
+                            onChange={(e) => handleNilaiAkhirChange(s.id, e.target.value)}
+                            className="w-16 text-center py-2 px-1 bg-white border-2 border-amber-300 focus:border-amber-500 rounded-xl font-extrabold text-base text-amber-950 shadow-sm focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                            placeholder="80"
                           />
-                        </td>
-                      ))}
-
-                      {/* SAS Input */}
-                      <td className="p-1.5 text-center border-r border-slate-100 bg-indigo-50/10">
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={curr.nilaiSAS ?? ''}
-                          onChange={(e) => handleSASChange(s.id, e.target.value)}
-                          className="w-14 text-center py-1.5 px-1 bg-white border border-indigo-200 rounded-lg font-bold text-indigo-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                        />
+                          <span className={`text-[10px] font-bold mt-1 px-1.5 py-0.2 rounded ${
+                            curr.nilaiAkhir >= (currentMapel?.kktp || 75)
+                              ? 'text-emerald-700 bg-emerald-50'
+                              : 'text-rose-700 bg-rose-50'
+                          }`}>
+                            {curr.nilaiAkhir >= (currentMapel?.kktp || 75) ? 'Tuntas' : 'Di Bawah KKTP'}
+                          </span>
+                        </div>
                       </td>
 
-                      {/* Nilai Akhir */}
-                      <td className="p-2 text-center border-r border-slate-100 bg-amber-50/20">
-                        <span className={`inline-block px-2.5 py-1 rounded-md font-extrabold text-sm ${
-                          curr.nilaiAkhir >= 85 ? 'bg-emerald-100 text-emerald-800' :
-                          curr.nilaiAkhir >= 75 ? 'bg-blue-100 text-blue-800' : 'bg-rose-100 text-rose-800'
-                        }`}>
-                          {curr.nilaiAkhir}
-                        </span>
-                      </td>
+                      {/* CHECKLIST TP TIAP MURID */}
+                      {currentTp.map(tp => {
+                        const isChecked = curr.tpTercapaiIds?.includes(tp.id) || false;
 
-                      {/* Editable Narrative */}
+                        return (
+                          <td key={tp.id} className="p-2 text-center border-r border-slate-100 bg-blue-50/5">
+                            <label className={`inline-flex flex-col items-center justify-center w-full py-2 px-1 rounded-xl border cursor-pointer select-none transition-all ${
+                              isChecked
+                                ? 'bg-emerald-50/90 border-emerald-300 text-emerald-900 shadow-sm font-bold'
+                                : 'bg-slate-50 border-slate-200 text-slate-400 hover:bg-white hover:border-slate-300'
+                            }`}>
+                              <div className="flex items-center gap-1.5">
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => handleToggleTp(s.id, tp.id)}
+                                  className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
+                                />
+                                <span className="font-extrabold text-xs">{tp.kodeTp}</span>
+                              </div>
+                              <span className={`text-[10px] mt-1 font-semibold ${
+                                isChecked ? 'text-emerald-700' : 'text-slate-400'
+                              }`}>
+                                {isChecked ? '✓ Tercapai' : 'Perlu Bimbingan'}
+                              </span>
+                            </label>
+                          </td>
+                        );
+                      })}
+
+                      {/* DESKRIPSI CAPAIAN KOMPETENSI (BISA DIEDIT BEBAS) */}
                       <td className="p-2">
-                        <div className="relative">
+                        <div className="relative space-y-1">
                           <textarea
-                            rows={2}
+                            rows={3}
                             value={curr.deskripsiCapaian || ''}
                             onChange={(e) => handleDescriptionChange(s.id, e.target.value)}
-                            className="w-full text-[11px] leading-relaxed p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50/50 hover:bg-white focus:bg-white transition"
-                            placeholder="Deskripsi capaian kompetensi siswa..."
+                            className="w-full text-[11px] leading-relaxed p-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50/50 hover:bg-white focus:bg-white transition"
+                            placeholder="Deskripsi capaian kompetensi murid..."
                           />
-                          <div className="flex items-center justify-between mt-1">
+                          <div className="flex items-center justify-between">
                             {curr.deskripsiIsCustom ? (
-                              <span className="text-[10px] text-amber-600 font-medium">
-                                ✏️ Deskripsi telah disunting guru
+                              <span className="text-[10px] text-amber-600 font-semibold flex items-center gap-1">
+                                <span>✏️ Diedit Khusus oleh Guru</span>
                               </span>
                             ) : (
-                              <span className="text-[10px] text-blue-600 font-medium">
-                                ✨ Otomatis tersinkron nilai
+                              <span className="text-[10px] text-blue-600 font-semibold flex items-center gap-1">
+                                <Sparkles className="w-3 h-3 text-blue-500" />
+                                <span>Otomatis sesuai Nilai & Checklist TP</span>
                               </span>
                             )}
                             <button
                               type="button"
                               onClick={() => handleGenerateSingle(s.id)}
-                              className="text-[10px] text-blue-600 hover:text-blue-800 font-semibold hover:underline"
+                              className="text-[10px] text-blue-600 hover:text-blue-800 font-bold hover:underline cursor-pointer"
+                              title="Kembalikan ke narasi otomatis standar Kurikulum Merdeka"
                             >
-                              Regenerate
+                              ⚡ Generate Ulang
                             </button>
                           </div>
                         </div>
@@ -605,19 +827,20 @@ export const InputNilaiView: React.FC = () => {
         <div className="space-y-3">
           {currentSiswa.map((s, index) => {
             const curr = draftNilai[s.id] || {
-              nilaiTp: {},
-              nilaiSAS: 80,
               nilaiAkhir: 80,
+              tpTercapaiIds: currentTp.map(t => t.id),
               deskripsiCapaian: '',
               deskripsiIsCustom: false
             };
 
+            const allTpChecked = currentTp.length > 0 && (curr.tpTercapaiIds || []).length === currentTp.length;
+
             return (
               <div key={s.id} className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-3">
-                {/* Siswa Header */}
-                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                  <div className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center font-bold text-xs">
+                {/* Siswa Header & Satu Nilai Input */}
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-7 h-7 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center font-bold text-xs">
                       {index + 1}
                     </span>
                     <div>
@@ -625,52 +848,77 @@ export const InputNilaiView: React.FC = () => {
                       <p className="text-[10px] text-slate-400 font-mono">NISN: {s.nisn}</p>
                     </div>
                   </div>
+
+                  {/* Input Nilai Utama */}
                   <div className="text-right">
-                    <span className="text-[10px] text-slate-400 block">Nilai Akhir</span>
-                    <span className="text-base font-extrabold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-200">
-                      {curr.nilaiAkhir}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Grid Inputs for Mobile */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {currentTp.map(tp => (
-                    <div key={tp.id} className="bg-slate-50 p-2 rounded-xl border border-slate-200">
-                      <label className="block text-[10px] font-bold text-blue-900 truncate" title={tp.deskripsi}>
-                        {tp.kodeTp}
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={curr.nilaiTp[tp.id] ?? ''}
-                        onChange={(e) => handleScoreChange(s.id, tp.id, e.target.value)}
-                        className="w-full text-center py-2 bg-white border border-slate-200 rounded-lg font-bold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none mt-1"
-                      />
-                    </div>
-                  ))}
-
-                  <div className="bg-indigo-50/70 p-2 rounded-xl border border-indigo-200">
-                    <label className="block text-[10px] font-bold text-indigo-900 truncate">
-                      Nilai SAS
-                    </label>
+                    <label className="text-[10px] font-bold text-amber-900 block mb-0.5">Nilai Rapor</label>
                     <input
                       type="number"
                       min="0"
                       max="100"
-                      value={curr.nilaiSAS ?? ''}
-                      onChange={(e) => handleSASChange(s.id, e.target.value)}
-                      className="w-full text-center py-2 bg-white border border-indigo-200 rounded-lg font-bold text-indigo-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none mt-1"
+                      value={curr.nilaiAkhir ?? ''}
+                      onChange={(e) => handleNilaiAkhirChange(s.id, e.target.value)}
+                      className="w-16 text-center py-1.5 bg-amber-50/50 border-2 border-amber-300 focus:border-amber-500 rounded-xl font-extrabold text-base text-amber-950 shadow-sm focus:outline-none"
                     />
                   </div>
                 </div>
 
+                {/* Checklist TP untuk Mobile */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-slate-700">
+                      Ceklist Tujuan Pembelajaran (TP) yang Dikuasai:
+                    </span>
+                    {currentTp.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => handleSelectAllTpForStudent(s.id)}
+                        className="text-[10px] text-blue-600 font-bold hover:underline"
+                      >
+                        {allTpChecked ? 'Batal Semua' : 'Pilih Semua'}
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {currentTp.map(tp => {
+                      const isChecked = curr.tpTercapaiIds?.includes(tp.id) || false;
+
+                      return (
+                        <label
+                          key={tp.id}
+                          className={`flex items-start gap-2.5 p-2 rounded-xl border cursor-pointer select-none transition ${
+                            isChecked
+                              ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
+                              : 'bg-slate-50 border-slate-200 text-slate-500'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => handleToggleTp(s.id, tp.id)}
+                            className="w-4 h-4 mt-0.5 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
+                          />
+                          <div className="text-[11px] leading-tight">
+                            <span className="font-extrabold text-slate-800 mr-1">{tp.kodeTp}:</span>
+                            <span>{tp.deskripsi}</span>
+                            <span className={`block text-[10px] font-bold mt-0.5 ${
+                              isChecked ? 'text-emerald-700' : 'text-slate-400'
+                            }`}>
+                              {isChecked ? '✓ Tercapai' : 'Perlu Bimbingan'}
+                            </span>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 {/* Deskripsi Capaian Mobile */}
-                <div>
+                <div className="pt-1">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-[11px] font-semibold text-slate-600">
-                      Deskripsi Capaian (Bisa Diedit):
+                      Deskripsi Capaian Rapor:
                     </span>
                     <button
                       type="button"
