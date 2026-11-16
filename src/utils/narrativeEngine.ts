@@ -36,7 +36,10 @@ export function generateDeskripsiCapaian(ctx: NarrativeContext): string {
     : `Murid`;
 
   if (tujuanPembelajaranList.length === 0) {
-    return `${prefix} telah menuntaskan pembelajaran pada mata pelajaran ${mapel.nama} dengan capaian nilai ${nilaiAkhir}.`;
+    if (nilaiAkhir >= (mapel.kktp || 75)) {
+      return `${prefix} telah menuntaskan seluruh capaian pembelajaran pada mata pelajaran ${mapel.nama} dengan baik.`;
+    }
+    return `${prefix} perlu bimbingan dan peningkatan belajar dalam capaian pembelajaran mata pelajaran ${mapel.nama}.`;
   }
 
   // Tentukan daftar TP yang tercapai (achieved) dan yang belum tercapai (unachieved)

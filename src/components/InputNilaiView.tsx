@@ -93,19 +93,38 @@ export const InputNilaiView: React.FC = () => {
 
       if (existing) {
         let initialTpIds: string[] = [];
-        if (Array.isArray(existing.tpTercapaiIds)) {
-          initialTpIds = existing.tpTercapaiIds;
+        if (Array.isArray(existing.tpTercapaiIds) && existing.tpTercapaiIds.length > 0) {
+          // Batasi tepat 1 TP terpilih per murid agar checklist lain tidak ikut tercentang
+          initialTpIds = [existing.tpTercapaiIds[0]];
         } else if (existing.nilaiTp && Object.keys(existing.nilaiTp).length > 0) {
-          initialTpIds = currentTp.filter(t => (existing.nilaiTp![t.id] ?? 0) >= (currentMapel.kktp || 75)).map(t => t.id);
+          const matched = currentTp.filter(t => (existing.nilaiTp![t.id] ?? 0) >= (currentMapel.kktp || 75)).map(t => t.id);
+          initialTpIds = matched.length > 0 ? [matched[0]] : (currentTp.length > 0 ? [currentTp[sIdx % currentTp.length].id] : []);
         } else {
-          // Default 1 TP terpilih per murid agar tidak terlalu banyak
+          // Default 1 TP terpilih per murid (variasi TP antar murid)
           initialTpIds = currentTp.length > 0 ? [currentTp[sIdx % currentTp.length].id] : [];
+        }
+
+        // Otomatis bersihkan jika deskripsi lama tersimpan teks angka nilai (misal: "dengan capaian nilai 80")
+        let deskripsi = existing.deskripsiCapaian;
+        if (!deskripsi || deskripsi.includes('dengan capaian nilai') || !existing.deskripsiIsCustom) {
+          deskripsi = generateDeskripsiCapaian({
+            siswa: s,
+            rombel: currentRombel,
+            mapel: currentMapel,
+            jurusan: currentJurusan,
+            jenjang: schoolProfile.jenjang,
+            tujuanPembelajaranList: currentTp,
+            nilaiAkhir: existing.nilaiAkhir ?? 80,
+            tpTercapaiIds: initialTpIds,
+            style: narrativeStyle
+          });
         }
 
         initial[s.id] = {
           ...existing,
           nilaiAkhir: existing.nilaiAkhir ?? 80,
-          tpTercapaiIds: initialTpIds
+          tpTercapaiIds: initialTpIds,
+          deskripsiCapaian: deskripsi
         };
       } else {
         // Default 1 TP per murid (variasi TP antar murid)
@@ -184,7 +203,7 @@ export const InputNilaiView: React.FC = () => {
     });
   };
 
-  // Handle Checklist TP per Siswa
+  // Handle Checklist TP per Siswa (Eksklusif 1 TP Utama per Siswa)
   const handleToggleTp = (siswaId: string, tpId: string) => {
     setDraftNilai(prev => {
       const current = prev[siswaId];
@@ -192,9 +211,9 @@ export const InputNilaiView: React.FC = () => {
 
       const currentTps = current.tpTercapaiIds || [];
       const isChecked = currentTps.includes(tpId);
-      const updatedTps = isChecked
-        ? currentTps.filter(id => id !== tpId)
-        : [...currentTps, tpId];
+      // Jika TP ini sudah dicentang, uncheck menjadi []
+      // Jika TP ini belum dicentang, aktifkan HANYA TP ini ([tpId]) tanpa menyertakan TP lainnya
+      const updatedTps = isChecked ? [] : [tpId];
 
       const s = currentSiswa.find(item => item.id === siswaId);
       let nextDeskripsi = current.deskripsiCapaian;
@@ -220,84 +239,6 @@ export const InputNilaiView: React.FC = () => {
           deskripsiCapaian: nextDeskripsi
         }
       };
-    });
-  };
-
-  // Handle Pilih / Batal Semua TP untuk 1 Siswa
-  const handleSelectAllTpForStudent = (siswaId: string) => {
-    setDraftNilai(prev => {
-      const current = prev[siswaId];
-      if (!current) return prev;
-
-      const currentTps = current.tpTercapaiIds || [];
-      const allSelected = currentTp.length > 0 && currentTps.length === currentTp.length;
-      const updatedTps = allSelected ? [] : currentTp.map(t => t.id);
-
-      const s = currentSiswa.find(item => item.id === siswaId);
-      let nextDeskripsi = current.deskripsiCapaian;
-      if (!current.deskripsiIsCustom && s && currentRombel && currentMapel) {
-        nextDeskripsi = generateDeskripsiCapaian({
-          siswa: s,
-          rombel: currentRombel,
-          mapel: currentMapel,
-          jurusan: currentJurusan,
-          jenjang: schoolProfile.jenjang,
-          tujuanPembelajaranList: currentTp,
-          nilaiAkhir: current.nilaiAkhir,
-          tpTercapaiIds: updatedTps,
-          style: narrativeStyle
-        });
-      }
-
-      return {
-        ...prev,
-        [siswaId]: {
-          ...current,
-          tpTercapaiIds: updatedTps,
-          deskripsiCapaian: nextDeskripsi
-        }
-      };
-    });
-  };
-
-  // Handle Centang / Batal 1 TP untuk Seluruh Murid di Kelas (Quick Action Header)
-  const handleToggleTpForWholeClass = (tpId: string) => {
-    setDraftNilai(prev => {
-      const allChecked = currentSiswa.every(s => (prev[s.id]?.tpTercapaiIds || []).includes(tpId));
-      const next = { ...prev };
-
-      currentSiswa.forEach(s => {
-        const curr = next[s.id];
-        if (curr) {
-          const currentTps = curr.tpTercapaiIds || [];
-          const updatedTps = allChecked
-            ? currentTps.filter(id => id !== tpId)
-            : currentTps.includes(tpId) ? currentTps : [...currentTps, tpId];
-
-          let nextDeskripsi = curr.deskripsiCapaian;
-          if (!curr.deskripsiIsCustom && currentRombel && currentMapel) {
-            nextDeskripsi = generateDeskripsiCapaian({
-              siswa: s,
-              rombel: currentRombel,
-              mapel: currentMapel,
-              jurusan: currentJurusan,
-              jenjang: schoolProfile.jenjang,
-              tujuanPembelajaranList: currentTp,
-              nilaiAkhir: curr.nilaiAkhir,
-              tpTercapaiIds: updatedTps,
-              style: narrativeStyle
-            });
-          }
-
-          next[s.id] = {
-            ...curr,
-            tpTercapaiIds: updatedTps,
-            deskripsiCapaian: nextDeskripsi
-          };
-        }
-      });
-
-      return next;
     });
   };
 
@@ -665,14 +606,9 @@ export const InputNilaiView: React.FC = () => {
                     <th key={tp.id} className="p-2.5 min-w-[140px] max-w-[200px] border-r border-slate-200 bg-blue-50/70">
                       <div className="flex items-center justify-between gap-1 mb-1">
                         <span className="font-extrabold text-blue-950 text-xs">{tp.kodeTp}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleTpForWholeClass(tp.id)}
-                          className="text-[9px] bg-blue-100 hover:bg-blue-200 text-blue-800 px-1.5 py-0.5 rounded font-bold transition whitespace-nowrap cursor-pointer"
-                          title={`Centang / Batal Semua Murid di Kelas untuk ${tp.kodeTp}`}
-                        >
-                          Pilih Semua
-                        </button>
+                        <span className="text-[9px] bg-blue-100/90 text-blue-700 px-1.5 py-0.5 rounded font-semibold whitespace-nowrap">
+                          Pilihan TP
+                        </span>
                       </div>
                       <div className="text-[10px] text-slate-600 font-normal leading-tight line-clamp-2" title={tp.deskripsi}>
                         {tp.deskripsi}
@@ -693,12 +629,10 @@ export const InputNilaiView: React.FC = () => {
                 {currentSiswa.map((s, index) => {
                   const curr = draftNilai[s.id] || {
                     nilaiAkhir: 80,
-                    tpTercapaiIds: currentTp.map(t => t.id),
+                    tpTercapaiIds: currentTp.length > 0 ? [currentTp[index % currentTp.length].id] : [],
                     deskripsiCapaian: '',
                     deskripsiIsCustom: false
                   };
-
-                  const allTpChecked = currentTp.length > 0 && (curr.tpTercapaiIds || []).length === currentTp.length;
 
                   return (
                     <tr key={s.id} className="hover:bg-blue-50/20 transition group">
@@ -711,15 +645,6 @@ export const InputNilaiView: React.FC = () => {
                         <div className="font-bold text-slate-900">{s.nama}</div>
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className="text-[10px] text-slate-400 font-mono">NISN: {s.nisn}</span>
-                          {currentTp.length > 0 && (
-                            <button
-                              type="button"
-                              onClick={() => handleSelectAllTpForStudent(s.id)}
-                              className="text-[10px] text-blue-600 hover:text-blue-800 font-bold hover:underline"
-                            >
-                              {allTpChecked ? 'Batal Semua TP' : '✓ Pilih Semua TP'}
-                            </button>
-                          )}
                         </div>
                       </td>
 
@@ -822,12 +747,10 @@ export const InputNilaiView: React.FC = () => {
           {currentSiswa.map((s, index) => {
             const curr = draftNilai[s.id] || {
               nilaiAkhir: 80,
-              tpTercapaiIds: currentTp.map(t => t.id),
+              tpTercapaiIds: currentTp.length > 0 ? [currentTp[index % currentTp.length].id] : [],
               deskripsiCapaian: '',
               deskripsiIsCustom: false
             };
-
-            const allTpChecked = currentTp.length > 0 && (curr.tpTercapaiIds || []).length === currentTp.length;
 
             return (
               <div key={s.id} className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-3">
@@ -861,17 +784,11 @@ export const InputNilaiView: React.FC = () => {
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold text-slate-700">
-                      Ceklist Tujuan Pembelajaran (TP) yang Dikuasai:
+                      Pilihan Tujuan Pembelajaran (TP) Murid:
                     </span>
-                    {currentTp.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => handleSelectAllTpForStudent(s.id)}
-                        className="text-[10px] text-blue-600 font-bold hover:underline"
-                      >
-                        {allTpChecked ? 'Batal Semua' : 'Pilih Semua'}
-                      </button>
-                    )}
+                    <span className="text-[10px] text-slate-400">
+                      Pilih 1 TP
+                    </span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
