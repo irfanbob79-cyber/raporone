@@ -86,7 +86,7 @@ export const InputNilaiView: React.FC = () => {
     if (!currentRombel || !currentMapel) return;
 
     const initial: Record<string, NilaiSiswa> = {};
-    currentSiswa.forEach(s => {
+    currentSiswa.forEach((s, sIdx) => {
       const existing = nilaiSiswa.find(
         n => n.siswaId === s.id && n.rombelId === currentRombel.id && n.mapelId === currentMapel.id
       );
@@ -98,9 +98,8 @@ export const InputNilaiView: React.FC = () => {
         } else if (existing.nilaiTp && Object.keys(existing.nilaiTp).length > 0) {
           initialTpIds = currentTp.filter(t => (existing.nilaiTp![t.id] ?? 0) >= (currentMapel.kktp || 75)).map(t => t.id);
         } else {
-          initialTpIds = (existing.nilaiAkhir >= (currentMapel.kktp || 75))
-            ? currentTp.map(t => t.id)
-            : currentTp.slice(0, Math.max(1, currentTp.length - 1)).map(t => t.id);
+          // Default 1 TP terpilih per murid agar tidak terlalu banyak
+          initialTpIds = currentTp.length > 0 ? [currentTp[sIdx % currentTp.length].id] : [];
         }
 
         initial[s.id] = {
@@ -109,7 +108,8 @@ export const InputNilaiView: React.FC = () => {
           tpTercapaiIds: initialTpIds
         };
       } else {
-        const defaultTpIds = currentTp.map(t => t.id);
+        // Default 1 TP per murid (variasi TP antar murid)
+        const defaultTpIds = currentTp.length > 0 ? [currentTp[sIdx % currentTp.length].id] : [];
         const initialDeskripsi = generateDeskripsiCapaian({
           siswa: s,
           rombel: currentRombel,
@@ -301,22 +301,16 @@ export const InputNilaiView: React.FC = () => {
     });
   };
 
-  // Handle Ceklist Otomatis Berdasarkan KKTP
+  // Handle Ceklist Otomatis Berdasarkan KKTP (1 TP Terpilih per Murid)
   const handleAutoCheckByKKTP = () => {
     const kktpThreshold = currentMapel?.kktp || 75;
     setDraftNilai(prev => {
       const next = { ...prev };
-      currentSiswa.forEach(s => {
+      currentSiswa.forEach((s, sIdx) => {
         const curr = next[s.id];
         if (curr) {
-          let updatedTps: string[] = [];
-          if (curr.nilaiAkhir >= kktpThreshold) {
-            updatedTps = currentTp.map(t => t.id);
-          } else if (curr.nilaiAkhir >= 65) {
-            updatedTps = currentTp.slice(0, Math.max(1, currentTp.length - 1)).map(t => t.id);
-          } else {
-            updatedTps = currentTp.slice(0, 1).map(t => t.id);
-          }
+          // Bagi 1 TP terpilih per murid secara bergantian
+          const selectedTp = currentTp.length > 0 ? [currentTp[sIdx % currentTp.length].id] : [];
 
           let nextDeskripsi = curr.deskripsiCapaian;
           if (!curr.deskripsiIsCustom && currentRombel && currentMapel) {
@@ -328,14 +322,14 @@ export const InputNilaiView: React.FC = () => {
               jenjang: schoolProfile.jenjang,
               tujuanPembelajaranList: currentTp,
               nilaiAkhir: curr.nilaiAkhir,
-              tpTercapaiIds: updatedTps,
+              tpTercapaiIds: selectedTp,
               style: narrativeStyle
             });
           }
 
           next[s.id] = {
             ...curr,
-            tpTercapaiIds: updatedTps,
+            tpTercapaiIds: selectedTp,
             deskripsiCapaian: nextDeskripsi
           };
         }
@@ -343,7 +337,7 @@ export const InputNilaiView: React.FC = () => {
       return next;
     });
 
-    setSaveStatus(`📋 Berhasil menyesuaikan checklist TP otomatis berdasarkan KKTP (${kktpThreshold})!`);
+    setSaveStatus(`📋 Berhasil menyesuaikan 1 TP terpilih per murid secara proporsional sesuai KKTP (${kktpThreshold})!`);
     setTimeout(() => setSaveStatus(''), 4000);
   };
 
@@ -592,7 +586,7 @@ export const InputNilaiView: React.FC = () => {
                 </span>
               </div>
               <p className="text-xs text-blue-800/90 mt-0.5">
-                Cukup input <strong>1 Nilai Rapor</strong>. Centang TP yang dikuasai tiap murid (TP bisa berbeda tiap murid). Narasi capaian otomatis tersusun rapi.
+                Cukup input <strong>1 Nilai Rapor</strong> dan pilih TP yang ditonjolkan (biasanya 1 TP per murid). TP yang tidak dicentang otomatis tidak dimunculkan di deskripsi rapor (kecuali jika nilai murid di bawah KKTP/kurang).
               </p>
             </div>
           </div>
@@ -774,7 +768,7 @@ export const InputNilaiView: React.FC = () => {
                               <span className={`text-[10px] mt-1 font-semibold ${
                                 isChecked ? 'text-emerald-700' : 'text-slate-400'
                               }`}>
-                                {isChecked ? '✓ Tercapai' : 'Perlu Bimbingan'}
+                                {isChecked ? '✓ Terpilih' : 'Tidak Dipilih'}
                               </span>
                             </label>
                           </td>
@@ -905,7 +899,7 @@ export const InputNilaiView: React.FC = () => {
                             <span className={`block text-[10px] font-bold mt-0.5 ${
                               isChecked ? 'text-emerald-700' : 'text-slate-400'
                             }`}>
-                              {isChecked ? '✓ Tercapai' : 'Perlu Bimbingan'}
+                              {isChecked ? '✓ Terpilih' : 'Tidak Dipilih'}
                             </span>
                           </div>
                         </label>

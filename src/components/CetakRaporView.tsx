@@ -304,7 +304,7 @@ export const CetakRaporView: React.FC = () => {
                       <th className="p-2 border-r border-black text-left">Mitra DUDI / Industri</th>
                       <th className="p-2 border-r border-black">Lokasi</th>
                       <th className="p-2 border-r border-black">Lamanya</th>
-                      <th className="p-2 border-r border-black">Predikat / Nilai</th>
+                      <th className="p-2 border-r border-black">Predikat</th>
                       <th className="p-2 text-left">Keterangan / Catatan DUDI</th>
                     </tr>
                   </thead>
@@ -317,11 +317,6 @@ export const CetakRaporView: React.FC = () => {
                         <div className="font-bold text-sm text-black">
                           {activePKL.predikat || getPredikatPKL(activePKL.nilaiAkhir)}
                         </div>
-                        {activePKL.nilaiAkhir > 0 && (
-                          <div className="text-[10px] text-slate-500 print:text-black">
-                            ({activePKL.nilaiAkhir})
-                          </div>
-                        )}
                       </td>
                       <td className="p-2 text-left text-[11px]">{activePKL.catatanDudi}</td>
                     </tr>
