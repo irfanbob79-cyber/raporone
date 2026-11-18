@@ -29,7 +29,7 @@ export const GenerateTPModal: React.FC<GenerateTPModalProps> = ({
   currentRombel,
   currentJurusan
 }) => {
-  const { schoolProfile, addTujuanPembelajaran } = useApp();
+  const { schoolProfile, addBatchTujuanPembelajaran } = useApp();
 
   const [mode, setMode] = useState<'bskap' | 'custom'>('bskap');
   const [selectedSemester, setSelectedSemester] = useState<'1 (Ganjil)' | '2 (Genap)'>(
@@ -117,15 +117,15 @@ export const GenerateTPModal: React.FC<GenerateTPModalProps> = ({
 
     if (selectedList.length === 0) return;
 
-    selectedList.forEach((tp, idx) => {
-      addTujuanPembelajaran({
+    addBatchTujuanPembelajaran(
+      selectedList.map((tp, idx) => ({
         rombelId: currentRombel.id,
         mapelId: currentMapel.id,
         semester: selectedSemester,
         kodeTp: `TP ${idx + 1}`,
         deskripsi: tp.deskripsi
-      });
-    });
+      }))
+    );
 
     setIsSuccess(true);
     setTimeout(() => {

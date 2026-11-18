@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { NilaiSiswa } from '../types';
 import { generateDeskripsiCapaian } from '../utils/narrativeEngine';
@@ -79,7 +79,21 @@ export const InputNilaiView: React.FC = () => {
 
   const currentJurusan = currentRombel?.jurusanId ? jurusan.find(j => j.id === currentRombel.jurusanId) : undefined;
   const currentSiswa = siswa.filter(s => s.rombelId === currentRombel?.id);
-  const currentTp = tujuanPembelajaran.filter(t => t.rombelId === currentRombel?.id && t.mapelId === currentMapel?.id);
+
+  // Pastikan ID setiap TP benar-benar unik (jika ada data lama dengan ID duplikat dari Generate TP massal)
+  const currentTp = useMemo(() => {
+    const raw = tujuanPembelajaran.filter(t => t.rombelId === currentRombel?.id && t.mapelId === currentMapel?.id);
+    const seen = new Set<string>();
+    return raw.map((tp, idx) => {
+      if (!tp.id || seen.has(tp.id)) {
+        const uniqueId = `${tp.id || 'tp'}-${idx}-${(tp.kodeTp || 'TP').replace(/\s+/g, '')}`;
+        seen.add(uniqueId);
+        return { ...tp, id: uniqueId };
+      }
+      seen.add(tp.id);
+      return tp;
+    });
+  }, [tujuanPembelajaran, currentRombel?.id, currentMapel?.id]);
 
   // Initialize draft when rombel/mapel changes
   useEffect(() => {
@@ -94,8 +108,9 @@ export const InputNilaiView: React.FC = () => {
       if (existing) {
         let initialTpIds: string[] = [];
         if (Array.isArray(existing.tpTercapaiIds) && existing.tpTercapaiIds.length > 0) {
-          // Batasi tepat 1 TP terpilih per murid agar checklist lain tidak ikut tercentang
-          initialTpIds = [existing.tpTercapaiIds[0]];
+          // Hanya ambil 1 TP yang valid di currentTp
+          const validIds = existing.tpTercapaiIds.filter(id => currentTp.some(t => t.id === id));
+          initialTpIds = validIds.length > 0 ? [validIds[0]] : (currentTp.length > 0 ? [currentTp[sIdx % currentTp.length].id] : []);
         } else if (existing.nilaiTp && Object.keys(existing.nilaiTp).length > 0) {
           const matched = currentTp.filter(t => (existing.nilaiTp![t.id] ?? 0) >= (currentMapel.kktp || 75)).map(t => t.id);
           initialTpIds = matched.length > 0 ? [matched[0]] : (currentTp.length > 0 ? [currentTp[sIdx % currentTp.length].id] : []);
@@ -209,11 +224,10 @@ export const InputNilaiView: React.FC = () => {
       const current = prev[siswaId];
       if (!current) return prev;
 
-      const currentTps = current.tpTercapaiIds || [];
-      const isChecked = currentTps.includes(tpId);
-      // Jika TP ini sudah dicentang, uncheck menjadi []
-      // Jika TP ini belum dicentang, aktifkan HANYA TP ini ([tpId]) tanpa menyertakan TP lainnya
-      const updatedTps = isChecked ? [] : [tpId];
+      const currentSelectedTpId = current.tpTercapaiIds?.[0];
+      // Jika TP ini sudah aktif, klik untuk membatalkan (uncheck menjadi [])
+      // Jika TP ini belum aktif, pilih HANYA TP ini ([tpId])
+      const updatedTps = currentSelectedTpId === tpId ? [] : [tpId];
 
       const s = currentSiswa.find(item => item.id === siswaId);
       let nextDeskripsi = current.deskripsiCapaian;
@@ -672,30 +686,35 @@ export const InputNilaiView: React.FC = () => {
 
                       {/* CHECKLIST TP TIAP MURID */}
                       {currentTp.map(tp => {
-                        const isChecked = curr.tpTercapaiIds?.includes(tp.id) || false;
+                        const selectedTpId = curr.tpTercapaiIds?.[0];
+                        const isChecked = selectedTpId === tp.id;
 
                         return (
                           <td key={tp.id} className="p-2 text-center border-r border-slate-100 bg-blue-50/5">
-                            <label className={`inline-flex flex-col items-center justify-center w-full py-2 px-1 rounded-xl border cursor-pointer select-none transition-all ${
-                              isChecked
-                                ? 'bg-emerald-50/90 border-emerald-300 text-emerald-900 shadow-sm font-bold'
-                                : 'bg-slate-50 border-slate-200 text-slate-400 hover:bg-white hover:border-slate-300'
-                            }`}>
-                              <div className="flex items-center gap-1.5">
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  onChange={() => handleToggleTp(s.id, tp.id)}
-                                  className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
-                                />
+                            <button
+                              type="button"
+                              onClick={() => handleToggleTp(s.id, tp.id)}
+                              className={`inline-flex flex-col items-center justify-center w-full py-2 px-1 rounded-xl border cursor-pointer select-none transition-all ${
+                                isChecked
+                                  ? 'bg-emerald-100/90 border-emerald-400 text-emerald-950 shadow-sm font-bold ring-2 ring-emerald-400/50'
+                                  : 'bg-slate-50 border-slate-200 text-slate-400 hover:bg-white hover:border-slate-300'
+                              }`}
+                              title={isChecked ? `Klik untuk membatalkan pilihan ${tp.kodeTp}` : `Klik untuk memilih ${tp.kodeTp}`}
+                            >
+                              <div className="flex items-center gap-1.5 pointer-events-none">
+                                <span className={`w-4 h-4 rounded flex items-center justify-center text-xs font-black ${
+                                  isChecked ? 'bg-emerald-600 text-white shadow-sm' : 'border border-slate-300 bg-white text-transparent'
+                                }`}>
+                                  ✓
+                                </span>
                                 <span className="font-extrabold text-xs">{tp.kodeTp}</span>
                               </div>
-                              <span className={`text-[10px] mt-1 font-semibold ${
-                                isChecked ? 'text-emerald-700' : 'text-slate-400'
+                              <span className={`text-[10px] mt-1 font-semibold pointer-events-none ${
+                                isChecked ? 'text-emerald-800' : 'text-slate-400'
                               }`}>
                                 {isChecked ? '✓ Terpilih' : 'Tidak Dipilih'}
                               </span>
-                            </label>
+                            </button>
                           </td>
                         );
                       })}
@@ -793,33 +812,35 @@ export const InputNilaiView: React.FC = () => {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {currentTp.map(tp => {
-                      const isChecked = curr.tpTercapaiIds?.includes(tp.id) || false;
+                      const selectedTpId = curr.tpTercapaiIds?.[0];
+                      const isChecked = selectedTpId === tp.id;
 
                       return (
-                        <label
+                        <button
                           key={tp.id}
-                          className={`flex items-start gap-2.5 p-2 rounded-xl border cursor-pointer select-none transition ${
+                          type="button"
+                          onClick={() => handleToggleTp(s.id, tp.id)}
+                          className={`flex items-start gap-2.5 p-2.5 rounded-xl border text-left cursor-pointer select-none transition ${
                             isChecked
-                              ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
-                              : 'bg-slate-50 border-slate-200 text-slate-500'
+                              ? 'bg-emerald-50 border-emerald-400 text-emerald-950 font-medium ring-1 ring-emerald-400'
+                              : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-white'
                           }`}
                         >
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => handleToggleTp(s.id, tp.id)}
-                            className="w-4 h-4 mt-0.5 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
-                          />
+                          <span className={`w-4 h-4 mt-0.5 rounded flex items-center justify-center text-xs font-black flex-shrink-0 ${
+                            isChecked ? 'bg-emerald-600 text-white' : 'border border-slate-300 bg-white text-transparent'
+                          }`}>
+                            ✓
+                          </span>
                           <div className="text-[11px] leading-tight">
                             <span className="font-extrabold text-slate-800 mr-1">{tp.kodeTp}:</span>
                             <span>{tp.deskripsi}</span>
                             <span className={`block text-[10px] font-bold mt-0.5 ${
-                              isChecked ? 'text-emerald-700' : 'text-slate-400'
+                              isChecked ? 'text-emerald-700 font-bold' : 'text-slate-400'
                             }`}>
-                              {isChecked ? '✓ Terpilih' : 'Tidak Dipilih'}
+                              {isChecked ? '✓ Terpilih' : 'Pilih TP Ini'}
                             </span>
                           </div>
-                        </label>
+                        </button>
                       );
                     })}
                   </div>

@@ -134,6 +134,7 @@ interface AppContextType {
   saveNilaiPKL: (item: NilaiPKL) => void;
   saveNilaiUKK: (item: NilaiUKK) => void;
   addTujuanPembelajaran: (tp: Omit<TujuanPembelajaran, 'id'>) => void;
+  addBatchTujuanPembelajaran: (tps: Omit<TujuanPembelajaran, 'id'>[]) => void;
   deleteTujuanPembelajaran: (id: string) => void;
   resetToDefaultData: () => void;
 }
@@ -190,7 +191,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [tujuanPembelajaran, setTujuanPembelajaran] = useState<TujuanPembelajaran[]>(() => {
     const saved = localStorage.getItem(`${STORAGE_KEY}_tp`);
-    return saved ? JSON.parse(saved) : defaultTujuanPembelajaran;
+    const rawList: TujuanPembelajaran[] = saved ? JSON.parse(saved) : defaultTujuanPembelajaran;
+    // Auto-healing: pastikan setiap TP memiliki ID unik, perbaiki ID duplikat dari data lama
+    const seenIds = new Set<string>();
+    return rawList.map((tp, idx) => {
+      if (!tp.id || seenIds.has(tp.id)) {
+        const uniqueId = `tp-${tp.rombelId}-${tp.mapelId}-${idx}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+        seenIds.add(uniqueId);
+        return { ...tp, id: uniqueId };
+      }
+      seenIds.add(tp.id);
+      return tp;
+    });
   });
 
   const [nilaiSiswa, setNilaiSiswa] = useState<NilaiSiswa[]>(() => {
@@ -762,8 +774,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addTujuanPembelajaran = (tp: Omit<TujuanPembelajaran, 'id'>) => {
-    const newItem: TujuanPembelajaran = { ...tp, id: `tp-${Date.now()}` };
+    const newItem: TujuanPembelajaran = {
+      ...tp,
+      id: `tp-${tp.rombelId}-${tp.mapelId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    };
     setTujuanPembelajaran(prev => [...prev, newItem]);
+  };
+
+  const addBatchTujuanPembelajaran = (tps: Omit<TujuanPembelajaran, 'id'>[]) => {
+    const newItems: TujuanPembelajaran[] = tps.map((tp, idx) => ({
+      ...tp,
+      id: `tp-${tp.rombelId}-${tp.mapelId}-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 8)}`
+    }));
+    setTujuanPembelajaran(prev => [...prev, ...newItems]);
   };
 
   const deleteTujuanPembelajaran = (id: string) => {
@@ -854,6 +877,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         saveNilaiPKL,
         saveNilaiUKK,
         addTujuanPembelajaran,
+        addBatchTujuanPembelajaran,
         deleteTujuanPembelajaran,
         resetToDefaultData
       }}
