@@ -8,7 +8,8 @@ export interface NarrativeContext {
   jenjang: SchoolLevel;
   tujuanPembelajaranList: TujuanPembelajaran[];
   nilaiAkhir?: number; // SATU JENIS NILAI YANG DI-INPUT GURU (0 - 100)
-  tpTercapaiIds?: string[]; // Daftar ID TP yang dicapai / diceklis murid
+  tpTercapaiIds?: string[]; // Daftar ID TP yang dipilih / diceklis murid (bisa 1 atau lebih)
+  tpStatus?: Record<string, 'tercapai' | 'tidak_tercapai'>; // Status capaian per TP
   nilaiTp?: Record<string, number>; // Fallback kompatibilitas data lama
   style?: 'personal' | 'ringkas';
 }
@@ -23,6 +24,7 @@ export function generateDeskripsiCapaian(ctx: NarrativeContext): string {
     tujuanPembelajaranList,
     nilaiAkhir = 80,
     tpTercapaiIds,
+    tpStatus = {},
     nilaiTp,
     style = 'personal'
   } = ctx;
@@ -46,24 +48,21 @@ export function generateDeskripsiCapaian(ctx: NarrativeContext): string {
   let achievedTps: TujuanPembelajaran[] = [];
   let unachievedTps: TujuanPembelajaran[] = [];
 
-  if (Array.isArray(tpTercapaiIds)) {
-    // Mode Utama: Berdasarkan checklist TP yang dipilih oleh guru
-    achievedTps = tujuanPembelajaranList.filter(t => tpTercapaiIds.includes(t.id));
-    unachievedTps = tujuanPembelajaranList.filter(t => !tpTercapaiIds.includes(t.id));
+  if (Array.isArray(tpTercapaiIds) && tpTercapaiIds.length > 0) {
+    // Mode Utama: Berdasarkan checklist TP yang dipilih oleh guru beserta status combo box-nya
+    const selectedTps = tujuanPembelajaranList.filter(t => tpTercapaiIds.includes(t.id));
+    selectedTps.forEach(t => {
+      const status = tpStatus[t.id] ?? 'tercapai';
+      if (status === 'tidak_tercapai') {
+        unachievedTps.push(t);
+      } else {
+        achievedTps.push(t);
+      }
+    });
   } else if (nilaiTp && Object.keys(nilaiTp).length > 0) {
     // Mode Fallback: Berdasarkan skor nilaiTp lama (kktp default 75)
     achievedTps = tujuanPembelajaranList.filter(t => (nilaiTp[t.id] ?? 0) >= (mapel.kktp || 75));
     unachievedTps = tujuanPembelajaranList.filter(t => (nilaiTp[t.id] ?? 0) < (mapel.kktp || 75));
-  } else {
-    // Default jika belum ada data checklist: jika nilai >= kktp anggap semua tercapai
-    const threshold = mapel.kktp || 75;
-    if (nilaiAkhir >= threshold) {
-      achievedTps = [...tujuanPembelajaranList];
-      unachievedTps = [];
-    } else {
-      achievedTps = tujuanPembelajaranList.slice(0, 1);
-      unachievedTps = tujuanPembelajaranList.slice(1);
-    }
   }
 
   const cleanTpDesc = (desc: string) => {
@@ -81,38 +80,47 @@ export function generateDeskripsiCapaian(ctx: NarrativeContext): string {
     return `${allExceptLast}, serta ${cleanTpDesc(list[list.length - 1].deskripsi)}`;
   };
 
+  // KONDISI 1: ADA KOMBINASI TP TERCAPAI DAN TP TIDAK TERCAPAI
+  if (achievedTps.length > 0 && unachievedTps.length > 0) {
+    const achievedText = formatTpList(achievedTps);
+    const unachievedText = formatTpList(unachievedTps);
+    return `${prefix} menunjukkan penguasaan yang baik dalam ${achievedText}, namun perlu peningkatan belajar dalam ${unachievedText} pada mata pelajaran ${mapel.nama}.`;
+  }
+
+  // KONDISI 2: HANYA ADA TP TERCAPAI
+  if (achievedTps.length > 0) {
+    const achievedText = formatTpList(achievedTps);
+    if (nilaiAkhir >= 85) {
+      return `${prefix} menunjukkan penguasaan yang sangat baik dalam ${achievedText} pada mata pelajaran ${mapel.nama}.`;
+    }
+    return `${prefix} menunjukkan penguasaan yang baik dalam ${achievedText} pada mata pelajaran ${mapel.nama}.`;
+  }
+
+  // KONDISI 3: HANYA ADA TP TIDAK TERCAPAI
+  if (unachievedTps.length > 0) {
+    const unachievedText = formatTpList(unachievedTps);
+    if (nilaiAkhir >= 65) {
+      return `${prefix} perlu bimbingan dan peningkatan belajar dalam ${unachievedText} pada mata pelajaran ${mapel.nama}.`;
+    }
+    return `${prefix} perlu bimbingan intensif dan dorongan belajar dalam menguasai kompetensi ${unachievedText} pada mata pelajaran ${mapel.nama}.`;
+  }
+
+  // FALLBACK JIKA GURU BELUM MENCEKLIS TP:
   const threshold = mapel.kktp || 75;
   const isLulus = nilaiAkhir >= threshold;
+  const defaultTp = tujuanPembelajaranList.slice(0, 1);
 
-  // KONDISI 1: NILAI SISWA TERCAPAI / TUNTAS (nilaiAkhir >= KKTP)
-  // TP yang di-uncheck TIDAK PERLU TAMPIL sama sekali (karena terlalu banyak).
-  // Hanya tampilkan TP yang dipilih / diceklis (biasanya 1 TP utama per murid).
   if (isLulus) {
-    if (achievedTps.length > 0) {
-      const achievedText = formatTpList(achievedTps);
-      if (nilaiAkhir >= 85) {
-        return `${prefix} menunjukkan penguasaan yang sangat baik dalam ${achievedText} pada mata pelajaran ${mapel.nama}.`;
-      }
-      return `${prefix} menunjukkan penguasaan yang baik dalam ${achievedText} pada mata pelajaran ${mapel.nama}.`;
+    if (defaultTp.length > 0) {
+      return `${prefix} menunjukkan penguasaan yang baik dalam ${formatTpList(defaultTp)} pada mata pelajaran ${mapel.nama}.`;
     }
-
-    // Jika guru belum mencentang tapi nilai sudah tuntas: gunakan 1 TP pertama
-    const defaultTp = tujuanPembelajaranList.slice(0, 1);
-    return `${prefix} menunjukkan penguasaan yang baik dalam ${formatTpList(defaultTp)} pada mata pelajaran ${mapel.nama}.`;
+    return `${prefix} telah menuntaskan seluruh capaian pembelajaran pada mata pelajaran ${mapel.nama} dengan baik.`;
+  } else {
+    if (defaultTp.length > 0) {
+      return `${prefix} perlu bimbingan dan peningkatan belajar dalam ${formatTpList(defaultTp)} pada mata pelajaran ${mapel.nama}.`;
+    }
+    return `${prefix} perlu bimbingan dan peningkatan belajar dalam capaian pembelajaran mata pelajaran ${mapel.nama}.`;
   }
-
-  // KONDISI 2: NILAI SISWA KURANG / TIDAK TERCAPAI (nilaiAkhir < KKTP)
-  // Di sinilah narasi "perlu bimbingan" ditampilkan.
-  // Gunakan tepat 1 TP yang belum tuntas agar narasi tidak terlalu panjang.
-  const targetTp = unachievedTps.length > 0 
-    ? unachievedTps.slice(0, 1) 
-    : (achievedTps.length > 0 ? achievedTps.slice(0, 1) : tujuanPembelajaranList.slice(0, 1));
-  const focusText = formatTpList(targetTp);
-
-  if (nilaiAkhir >= 65) {
-    return `${prefix} perlu bimbingan dan peningkatan belajar dalam ${focusText} pada mata pelajaran ${mapel.nama}.`;
-  }
-  return `${prefix} perlu bimbingan intensif dan dorongan belajar dalam menguasai kompetensi ${focusText} pada mata pelajaran ${mapel.nama}.`;
 }
 
 // GENERATE OTOMATIS CATATAN WALI KELAS

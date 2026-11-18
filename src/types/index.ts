@@ -115,7 +115,8 @@ export interface NilaiSiswa {
   mapelId: string;
   semester: string;
   nilaiAkhir: number; // SATU JENIS NILAI RAPOR YANG DI-INPUT (0 - 100)
-  tpTercapaiIds?: string[]; // Daftar ID TP yang dipilih / diceklis untuk siswa ini
+  tpTercapaiIds?: string[]; // Daftar ID TP yang dipilih / diceklis untuk siswa ini (bisa 1 atau lebih)
+  tpStatus?: Record<string, 'tercapai' | 'tidak_tercapai'>; // Status capaian per TP: 'tercapai' atau 'tidak_tercapai'
   nilaiTp?: Record<string, number>; // Opsional untuk kompatibilitas data lama
   nilaiSAS?: number; // Opsional untuk kompatibilitas data lama
   deskripsiCapaian: string;
